@@ -170,6 +170,7 @@ def ask_server_annuaire_contacts(client, annuaire_name):
         return [] # Empty List
 
 def ask_menu_choice(min_max = (1, 7)):
+    clear()
 
     print("1. Afficher mon annuaire")
     print("2. Ajouter un contact")
@@ -237,7 +238,30 @@ def ask_admin_menu_choice(min_max = (1, 4)):
         ask_admin_menu_choice()
     
     return choice
+
+def ask_permission_menu(min_max = (1, 3)):
+    clear()
     
+    print("1. Ajouter un utilisateur à mon annuaire")
+    print("2. Supprimer un utilisateur de mon annuaire")
+    print("3. Quitter")
+
+    choice = input("Votre choix: ")
+
+    try:
+        int(choice)
+    except(Exception):
+        print("Invalid Number")
+        ask_permission_menu()
+
+    if(int(choice) < min_max[0] or int(choice) > min_max[1]):
+        print("Invalid Choice")
+        ask_permission_menu()
+    
+    return choice
+
+
+
 def list_contacts(contacts):
     time.sleep(1)
     for index, contact in enumerate(contacts):
@@ -299,22 +323,75 @@ def main():
             match(int(user_input)):
                 case 1:
                     # Add User
-                    new_username = input("Nom d'utilisateur: ")
-                    new_password = input("Mot de passe: ")
+                    new_username = input("Nom d'utilisateur: ").strip()
+                    new_password = input("Mot de passe: ").strip()
+                    new_user_admin = input("Admin? (y/n): ").strip()
 
-                    client.convert_and_transmit_data(ADD_USER_TYPE, {"token": client.get_token(), "username": client.get_username(), "new_username": new_username, "new_password": new_password})
+                    if(new_user_admin == "y"):
+                        new_user_admin = True
+                    else:
+                        new_user_admin = False
+
+                    client.convert_and_transmit_data(ADD_USER_TYPE, {"token": client.get_token(), "username": client.get_username(), "new_username": new_username, "new_password": new_password, "new_user_admin": new_user_admin})
+                    request = client.receive_and_convert_data()
+                    if(request["type"] == RESPONSE_OK_TYPE):
+                        print("Utilisateur ajouté avec succès")
+                    else:
+                        print("Une erreur est survenue lors de la création de l'utilisateur")
+                        print(request["data"]["message"])
+
+                    time.sleep(2)
+                    clear()
                 case 2:
                     # Delete User
-                    client.convert_and_transmit_data(REMOVE_USER_TYPE, {"token": client.get_token(), "username": client.get_username()})
-                    
+                    print("Supprimer l'utilisateur")
+                    user_to_delete = input("Nom d'utilisateur: ")              
+
+                    if(user_to_delete == client.get_username()):
+                        print("Vous ne pouvez pas supprimer votre propre compte")
+                        time.sleep(2)
+                        clear()
+                        return
+
+                    client.convert_and_transmit_data(REMOVE_USER_TYPE, {"token": client.get_token(), "username": client.get_username(), "user_to_delete": user_to_delete})
+                    request = client.receive_and_convert_data()
+                    if(request["type"] == RESPONSE_OK_TYPE):
+                        print("Utilisateur supprimé avec succès")
+                    else:
+                        print("Une erreur est survenue lors de la supression de l'utilisateur")
+                        print(request["data"]["message"])
+                        
+                    time.sleep(2)
+                    clear()
                 case 3:
                     # Edit User
-                    client.convert_and_transmit_data(EDIT_USER_TYPE, {"token": client.get_token(), "username": client.get_username()})
-                    
+                    print("Modifier l'utilisateur")
+                    user_to_edit = input("Nom d'utilisateur: ")
+
+                    new_username = input("Nouveau nom d'utilisateur: ")
+                    new_password = input("Nouveau mot de passe: ")
+                    new_is_admin = input("Admin? (y/n): ")
+
+                    if(new_is_admin == "y"):
+                        new_is_admin = True
+                    else:
+                        new_is_admin = False
+
+                    client.convert_and_transmit_data(EDIT_USER_TYPE, {"token": client.get_token(), "username": client.get_username(), "user_to_edit": user_to_edit, "new_username": new_username, "new_password": new_password, "new_is_admin": new_is_admin})
+                    request = client.receive_and_convert_data()
+                    if(request["type"] == RESPONSE_OK_TYPE):
+                        print("Utilisateur modifié avec succès")
+                    else:
+                        print("Une erreur est survenue lors de la modification de l'utilisateur")
+                        print(request["data"]["message"])
+
+                    time.sleep(2)
+                    clear()
                 case 4:
                     # Quit
                     client.convert_and_transmit_data(DISCONNECT_TYPE, {"token": client.get_token(), "username": username})
-                    
+                    print("Déconnecté avec succès")
+                    break                    
                 case _:
                     print("Invalid Choice")
                     
@@ -373,7 +450,6 @@ def main():
                         # check if valid number
                         if(contact_index < 0 or contact_index > len(contacts)):
                             print("Invalid Number")
-                            print("Retour au menu.")
                             time.sleep(1)
                             clear()
                             return                    
@@ -385,6 +461,18 @@ def main():
                         return
 
                     client.convert_and_transmit_data(REMOVE_CONTACT_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name, "contact_index": contact_index})
+                    response = client.receive_and_convert_data()
+
+                    if(response["type"] == RESPONSE_OK_TYPE):
+                        print("Contact Supprimé avec succès")
+                        time.sleep(1)
+                        clear()
+                    else:
+                        print("Une erreur est survenue lors de la suppression du contact")
+                        print(response["data"]["message"])
+                        time.sleep(3)
+                        clear()
+
                 case 4:
                     # Modifier un contact
                     contacts = ask_server_annuaire_contacts(client, annuaire_name)
@@ -416,28 +504,76 @@ def main():
 
                         # send request to server
                         client.convert_and_transmit_data(EDIT_CONTACT_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name, "contact_line": contact_index, "contact": contact})
+                        response = client.receive_and_convert_data()
 
-                        
-
-
-
+                        if(response["type"] == RESPONSE_OK_TYPE):
+                            print("Contact Modifié avec succès")
+                            time.sleep(1)
+                            clear()
+                        else:
+                            print("Une erreur est survenue lors de la modification du contact")
+                            print(response["data"]["message"])
+                            time.sleep(3)
+                            clear()
+                            
                     except(Exception):
                         print("Invalid Number")
                         print("Retour au menu.")
                         time.sleep(1)
                         clear()
                         return
-                    
-
 
                 case 5:
                     # Rechercher un contact
-                    pass
+                    contacts = ask_server_annuaire_contacts(client, annuaire_name)
+                    if(contacts == False):
+                        print("Vous n'avez aucun contact dans votre annuaire")
+                        time.sleep(1)
+                        clear()
+                        return
+                    
+                    print("Voici les contacts dans votre annuaire:")
+                    list_contacts(contacts)
+
+                    word_to_search = input("Veuillez entrer le nom du contact à rechercher: ").strip()
+
+                    # send request to server
+                    client.convert_and_transmit_data(SEARCH_CONTACT_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name, "word_to_search": word_to_search})
+                    response = client.receive_and_convert_data()
+
+                    if(response["type"] == RESPONSE_OK_TYPE):
+                        if("contacts" in response["data"]):
+                            print("Voici les contacts trouvés:")
+                            list_contacts(response["data"]["contacts"])
+                        else:
+                            print("Aucun contact trouvé")
+                    else:
+                        print("Une erreur est survenue lors de la recherche du contact")
+                        print(response["data"]["message"])
+                        time.sleep(3)
+                        clear()                   
                     
                 case 6:
                     # Gérer les permissions de mon annuaire
-                    pass
+                    # Displaying permission menu
+                    user_input = ask_permission_menu((1, 3))
+                    match(int(user_input)):
+                        case 1:
+                            # List permissions
 
+
+                            pass
+                        case 2:
+                            # Add User from Directory
+                            pass
+                        case 3:
+                            # Remove User from Directory
+                            pass
+                        case 4:
+                            # Quitter
+                            client.convert_and_transmit_data(DISCONNECT_TYPE, {"token": client.get_token(), "username": username})
+                            print("Déconnecté avec succès")
+                            break
                 case 7:
                     # Quitter
                     client.convert_and_transmit_data(DISCONNECT_TYPE, {"token": client.get_token(), "username": username})
