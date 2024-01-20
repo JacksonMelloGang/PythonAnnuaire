@@ -3,25 +3,34 @@ import json
 import time
 import os
 
-# Constants, used to identify the type of request: (Directory = Annuaire)
+# Received Constants, used to identify the type of request: (Directory = Annuaire)
 CONNEXION_TYPE = "CONNEXION" # Provided => {"username": "username", "password": "password"}
 DISCONNECT_TYPE = "DISCONNECT" # Provided => {}
-DATA_REQUEST_TYPE = "DATA_REQUEST" # Provided => {"token": token, "data": {"annuaire": "directory_name"}}
+
+# Directory
+LOOK_DIRECTORY = "LOOK_DIRECTORY" # Provided => {"token": token, "data": {"annuaire": "directory_name"}}
 ADD_CONTACT_TYPE = "ADD_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
 EDIT_CONTACT_TYPE = "EDIT_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
 REMOVE_CONTACT_TYPE = "REMOVE_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
 SEARCH_CONTACT_TYPE = "SEARCH_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
+
+# Share Directory
 LIST_DIRECTORIES_TYPE = "LIST_DIRECTORIES" # Provided => {"token": token, "data": {}}
 ADD_USER_TO_DIRECTORY_TYPE = "ADD_USER_TO_DIRECTORY" # Provided => {"token": token, "data": {"annuaire": "directory_name", "username": "username"}}
+REMOVE_USER_TO_DIRECTORY_TYPE = "REMOVE_USER_TO_DIRECTORY" # Provided => {"token": token, "data": {"annuaire": "directory_name", "username": "username"}}
 
-
+# Admin
+LIST_USERS_TYPE = "LIST_USERS" # Provided => {"token": token, "data": {}}
+USER_INFO_TYPE = "USER_INFO" # Provided => {"token": token, "data": {"username": "username", "looked_user": "looked_user"}}
 ADD_USER_TYPE = "ADD_USER" # Provided => {"token": token, "data": {"username": "username", "password": "password"}}
 REMOVE_USER_TYPE = "REMOVE_USER" # Provided => {"token": token, "data": {"username": "username", "password": "password"}}
 EDIT_USER_TYPE = "EDIT_USER" # Provided => {"token": token, "data": {"username": "username", "password": "password"}}
-LIST_USERS_TYPE = "LIST_USERS" # Provided => {"token": token, "data": {}}   
 
-# Receivable Constants
-DATA_REQUEST_OK_TYPE = "DATA_REQUEST_OK"
+# Sent Constants, used to identify the type of request: (Directory = Annuaire)
+CONNEXION_OK_TYPE = "CONNEXION_OK" # Provided => {"message": "Valid Credentials", "token": token}
+DISCONNECT_OK_TYPE = "DISCONNECT_OK" # Provided => {"message": "Disconnected Successfully"}
+RESPONSE_OK_TYPE = "RESPONSE_OK" # Provided => {"data": {"annuaire": "directory_name", "contacts": [{"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}, ...]}}
+ERROR_TYPE = "ERROR" # Provided => {"message": "Error Message"}
 
 def clear():
     # if windows, use cls instead of clear
@@ -99,6 +108,7 @@ class Client:
             self.token = response["data"]["token"]
             self.username = username
             self.user_connected = True
+            
             if(response["data"]["isAdmin"] == True):
                 self.is_admin = True
         else:
@@ -148,10 +158,10 @@ class Client:
 ##############################################################################################################################
 
 def ask_server_annuaire_contacts(client, annuaire_name):
-    client.convert_and_transmit_data(DATA_REQUEST_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_content": annuaire_name})
+    client.convert_and_transmit_data(LOOK_DIRECTORY, {"token": client.get_token(), "username": client.get_username(), "annuaire_content": annuaire_name})
     response = client.receive_and_convert_data()
     # get data from request and display it with a number before each contact (1, 2, 3, ...)
-    if(response["type"] == DATA_REQUEST_OK_TYPE):
+    if(response["type"] == RESPONSE_OK_TYPE):
         contacts = response["data"]["contacts"]
 
         return contacts
@@ -168,7 +178,7 @@ def ask_menu_choice(min_max = (1, 6)):
     print("5. Gérer les permissions de mon annuaire")
     print("6. Quitter")
 
-    choice = input("Choice: ")
+    choice = input("Votre choix: ")
 
     # While choice is not a valid number or is not in the range of min_max
     try: 
@@ -186,12 +196,23 @@ def ask_menu_choice(min_max = (1, 6)):
 
 def ask_contact_information():
     print("Veuillez entrer les informations du contact")
-    name = input("Nom: ")
-    first_name = input("Prénom: ")
-    phone = input("Téléphone: ")
-    email = input("Email: ")
-    contact = {"name": name, "first_name": first_name, "phone": phone, "email": email}
+    name = input("Nom*: ").strip()
+    first_name = input("Prénom*: ").strip()
+    email = input("Email*: ").strip()
+    phone = input("Téléphone: ").strip()
+    address = input("Adresse: ").strip()
+    contact = {"name": name, "first_name": first_name, "email": email, "phone": phone, "address": address}
     
+    if(name == "" or first_name == "" or email == ""):
+        print("Les champs marqués d'un * sont obligatoires")
+        ask_contact_information()
+    
+    if(len(phone) == 0 or phone == ""):
+        contact[phone] = "N/A"
+    
+    if(len(address) == 0 or address == ""):
+        contact[address] = "N/A"
+
     return contact
 
 def ask_admin_menu_choice(min_max = (1, 4)):
@@ -216,7 +237,24 @@ def ask_admin_menu_choice(min_max = (1, 4)):
     
     return choice
     
+def list_contacts(contacts):
+    time.sleep(1)
+    for index, contact in enumerate(contacts):
+        contact_info = contact.split(",")
+        contact_name = ""
+        contact_first_name = ""
+        contact_email = ""
+        contact_phone = ""
+        contact_address = ""
 
+        # if contact_info[x] is empty or does not exist, we set contact_name to N/A
+        contact_name = "N/A" if (contact_info or contact_info[0] == "") else contact_info[0]
+        contact_first_name = "N/A" if (contact_info or contact_info[1] == "") else contact_info[1]
+        contact_email = "N/A" if (contact_infoor contact_info[2] == "") else contact_info[2]
+        contact_phone = "N/A" if (contact_info or contact_info[3] == "") else contact_info[3]
+        contact_address = "N/A" if (contact_info or contact_info[4] == "") else contact_info[4]
+        
+        print(f"{index + 1}. {contact_name} {contact_first_name} {contact_email} {contact_phone} {contact_address}")
 
 def main():
     # Global Variables
@@ -236,10 +274,10 @@ def main():
     # Connected to the server, now asking for credentials
     while(logged_in == False):
         while(username == ""):
-            username = input("Username: ")
+            username = input("Username: ").strip()
 
         while(password == ""):
-            password = input("Password: ")
+            password = input("Password: ").strip()
 
         logged_in = client.login(username, password)
 
@@ -291,71 +329,84 @@ def main():
                         clear()
                     else:
                         print("Voici les contacts dans votre annuaire:")
-                        time.sleep(1)
-                        for index, contact in enumerate(contacts):
-                            contact_info = contact.split(",")
-                            contact_name = ""
-                            contact_first_name = ""
-                            contact_email = ""
-                            contact_phone = ""
-                            contact_address = ""
-
-                            # if contact_info[0] is empty or does not exist, we set contact_name to N/A
-
-
-
-
-                            if(contact_info[0] == ""):
-                                contact_name = "N/A"
-                            else:
-                                contact_name = contact_info[0]
-
-                            if(contact_info[1] == ""):
-                                contact_first_name = "N/A"
-                            else:
-                                contact_first_name = contact_info[1]
-
-                            if(contact_info[2] == ""):
-                                contact_email = "N/A"
-                            else:
-                                contact_email = contact_info[2]
-
-                            if(contact_info[3] == ""):
-                                contact_phone = "N/A"
-                            else:
-                                contact_phone = contact_info[3]
-
-                            if(contact_info[4] == ""):
-                                contact_address = "N/A"
-                            else: 
-                                contact_address = contact_info[4]
-
-                            print(f"{index + 1}. {contact_name} {contact_first_name} {contact_email} {contact_phone} {contact_address}")
+                        list_contacts(contacts)
                         
                 case 2:
                     # Ajouter un contact
                     contact = ask_contact_information()
 
-                    client.convert_and_transmit_data(ADD_CONTACT_TYPE, {"token": client.get_token(), "username": username, "annuaire_name": annuaire_name, "contact": contact})
-                    
+                    client.convert_and_transmit_data(ADD_CONTACT_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name, "contact": contact})
+                    response = client.receive_and_convert_data()
+
+                    if(response["type"] == RESPONSE_OK_TYPE):
+                        print("Contact Ajouté avec succès")
+                        time.sleep(1)
+                        clear()
+                    else:
+                        print("Une erreur est survenue lors de l'ajout du contact")
+
+
                 case 3:
                     # Supprimer un contact
-                    ask_server_annuaire_contacts(client, annuaire_name)
-
-                    client.convert_and_transmit_data(REMOVE_CONTACT_TYPE, {"token": client.get_token(), "username": username, "annuaire_name": annuaire_name, "contact_line": ""})
-
+                    contacts = ask_server_annuaire_contacts(client, annuaire_name)
+                    if(contacts == False):
+                        print("Vous n'avez aucun contact dans votre annuaire")
+                        time.sleep(1)
+                        clear()
+                        return
                     
+                    print("Voici les contacts dans votre annuaire:")
+                    list_contacts(contacts)
+                    contact_index = 0
+
+                    # ask for contact index and check if valid
+                    try:
+                        contact_index = input("Veuillez entrer le numéro du contact à supprimer: ")
+                        contact_index = int(contact_index) - 1
+
+                        # check if valid number
+                        if(contact_index < 0 or contact_index > len(contacts)):
+                            print("Invalid Number")
+                            print("Retour au menu.")
+                            time.sleep(1)
+                            clear()
+                            return                    
+                    except(Exception):
+                        print("Invalid Number")
+                        print("Retour au menu.")
+                        time.sleep(1)
+                        clear()
+                        return
+
+                    client.convert_and_transmit_data(REMOVE_CONTACT_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name, "contact_line": ""})
                 case 4:
+                    # Modifier un contact
+                    pass
+
+                case 5:
                     # Rechercher un contact
                     pass
                     
-                case 5:
+                case 6:
+                    # Gérer les permissions de mon annuaire
+                    pass
+
+                case 7:
                     # Quitter
                     client.convert_and_transmit_data(DISCONNECT_TYPE, {"token": client.get_token(), "username": username})
-                    
+                    print("Déconnecté avec succès")
+                    break
+
                 case _:
                     print("Invalid Choice")
                     
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except(KeyboardInterrupt):
+        print("Exiting...")
+        exit(0)
+    except Exception as e:
+        print("An Unknow Error Has Occured ", e)
+        exit(1)
