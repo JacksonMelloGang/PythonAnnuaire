@@ -8,6 +8,10 @@ import secrets
 USER_FOLDER = "./user_files"
 valid_token = {}
 
+# create USER_FOLDER if it doesn't exist
+if not os.path.exists(USER_FOLDER):
+    os.makedirs(USER_FOLDER)
+
 # Received Constants, used to identify the type of request: (Directory = Annuaire)
 CONNEXION_TYPE = "CONNEXION" # Provided => {"username": "username", "password": "password"}
 DISCONNECT_TYPE = "DISCONNECT" # Provided => {}
@@ -101,7 +105,7 @@ def authenticate_user(username, password):
     # create./user_files folder if it doesn't exist where is the program is executed    
     if not os.path.exists(USER_FOLDER):
         os.makedirs(USER_FOLDER)
-        return False, None
+        return False, None, False
 
     # get name of every folder in ./user_files
     user_folders = os.listdir(USER_FOLDER)
@@ -109,23 +113,24 @@ def authenticate_user(username, password):
     # check if username is in user_folders, check if file user_info.txt exists in it and if yes, access file user_info.txt to get password at first line
     if username in user_folders and os.path.exists(f"{USER_FOLDER}/{username}/user_info.txt"):
         with open(f"{USER_FOLDER}/{username}/user_info.txt", "r") as user_info_file:
-            file_password = user_info_file.readline()
+            # get first line of user_info.txt and compare it with password
+            file_password = user_info_file.readline().strip()
 
             if file_password == password:
                 token = secrets.token_hex(16)
                 valid_token[username] = token # store token in valid_token dict
+                is_admin = False
 
                 # check if user is admin by checking the next line and look if there is "isAdmin=True"
-                is_admin = False
-                next_line = user_info_file.readline()
+                next_line = user_info_file.readline().strip()
                 if next_line == "isAdmin=True":
                     is_admin = True
 
                 return True, token, is_admin
             else:
-                return False, None
+                return False, None, False
     else:
-        return False, None
+        return False, None, None
     
 def verify_token(username, token):
     if username in valid_token and valid_token[username] == token:
@@ -349,13 +354,16 @@ def handle_add_user_to_directory_request(client_socket, data):
     pass
 
 def handle_add_user_request(client_socket, data):
+    new_username = data["data"]["new_username"]
+    new_password = data["data"]["new_password"]
+
     # check if username already exists in user_files folder
-    if os.path.exists(f"{USER_FOLDER}/{data['data']['new_user']}"):
+    if os.path.exists(f"{USER_FOLDER}/{new_username}"):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Already Exists"})
         return
     
     # create new user folder
-    success = create_new_user_folder(data["data"]["new_user"], data["data"]["new_password"])
+    success = create_new_user_folder(new_username, new_password)
     if(success):
         convert_and_transmit_data(client_socket, ADD_USER_TYPE, {"message": "User Created Successfully"})
     else:

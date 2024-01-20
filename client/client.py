@@ -284,6 +284,7 @@ def main():
 
         if(logged_in == False):
             print("Couldn't Log In, Try Again")
+            return
         else:
             print("Logged In Successfully")
             logged_in = True
@@ -298,23 +299,25 @@ def main():
             match(int(user_input)):
                 case 1:
                     # Add User
-                    client.convert_and_transmit_data(ADD_USER_TYPE, {"token": client.get_token(), "username": "username", "password": "password"})
-                    break
+                    new_username = input("Nom d'utilisateur: ")
+                    new_password = input("Mot de passe: ")
+
+                    client.convert_and_transmit_data(ADD_USER_TYPE, {"token": client.get_token(), "username": client.get_username(), "new_username": new_username, "new_password": new_password})
                 case 2:
                     # Delete User
-                    client.convert_and_transmit_data(REMOVE_USER_TYPE, {"token": client.get_token(), "username": "username", "password": "password"})
-                    break
+                    client.convert_and_transmit_data(REMOVE_USER_TYPE, {"token": client.get_token(), "username": client.get_username()})
+                    
                 case 3:
                     # Edit User
-                    client.convert_and_transmit_data(EDIT_USER_TYPE, {"token": client.get_token(), "username": username, "edited_user": "password"})
-                    break
+                    client.convert_and_transmit_data(EDIT_USER_TYPE, {"token": client.get_token(), "username": client.get_username()})
+                    
                 case 4:
                     # Quit
                     client.convert_and_transmit_data(DISCONNECT_TYPE, {"token": client.get_token(), "username": username})
-                    break
+                    
                 case _:
                     print("Invalid Choice")
-                    break
+                    
         else:
             # Displaying the menu
             user_input = ask_menu_choice((1, 7))
