@@ -11,13 +11,21 @@ ADD_CONTACT_TYPE = "ADD_CONTACT" # Provided => {"token": token, "data": {"annuai
 EDIT_CONTACT_TYPE = "EDIT_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
 REMOVE_CONTACT_TYPE = "REMOVE_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
 SEARCH_CONTACT_TYPE = "SEARCH_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
-LIST_DIRECTORIES = "LIST_DIRECTORIES" # Provided => {"token": token, "data": {}}
+LIST_DIRECTORIES_TYPE = "LIST_DIRECTORIES" # Provided => {"token": token, "data": {}}
+ADD_USER_TO_DIRECTORY_TYPE = "ADD_USER_TO_DIRECTORY" # Provided => {"token": token, "data": {"annuaire": "directory_name", "username": "username"}}
 
 
 ADD_USER_TYPE = "ADD_USER" # Provided => {"token": token, "data": {"username": "username", "password": "password"}}
 REMOVE_USER_TYPE = "REMOVE_USER" # Provided => {"token": token, "data": {"username": "username", "password": "password"}}
 EDIT_USER_TYPE = "EDIT_USER" # Provided => {"token": token, "data": {"username": "username", "password": "password"}}
 LIST_USERS_TYPE = "LIST_USERS" # Provided => {"token": token, "data": {}}   
+
+def clear():
+    # if windows, use cls instead of clear
+    if(os.name == "nt"):
+        os.system("cls")
+    else:
+        os.system("clear")
 
 class Client:
 
@@ -26,6 +34,7 @@ class Client:
         self.token = None
         self.connected = False
         self.user_connected = False
+        self.is_admin = False
 
     def establish_connection(self, addr, port):
         try:
@@ -85,6 +94,8 @@ class Client:
 
             self.token = response["data"]["token"]
             self.user_connected = True
+            if(response["data"]["isAdmin"] == True):
+                self.is_admin = True
         else:
             print(f"An Unknow error occured : {response['data']['message']}")
 
@@ -98,7 +109,7 @@ class Client:
         
         self.convert_and_transmit_data("DISCONNECT", {})
         response = self.receive_and_convert_data()
-        if(response[type] == "DISCONNECT_OK"):
+        if(response["type"] == "DISCONNECT_OK"):
             print("Déconnecté avec succès")
         else:
             print("Une erreur est survenue lors de la déconnexion")
@@ -125,9 +136,17 @@ class Client:
 ##############################################################################################################################
 ##############################################################################################################################
 
+def ask_server_annuaire_contacts(client, annuaire_name):
+    client.convert_and_transmit_data("DATA_REQUEST", {"token": client.get_token(), "data": {"annaire": annuaire_name}})
+    response = client.receive_and_convert_data()
+    # get data from request and display it with a number before each contact (1, 2, 3, ...)
+    if(response["type"] == "DATA_REQUEST_OK"):
+        contacts = response["data"]["contacts"]
+        for index, contact in enumerate(contacts):
+            print(f"{index + 1}. {contact['name']} {contact['first_name']} {contact['phone']} {contact['email']}")
 
-def ask_menu_choice():
-    min_max = (1, 5)
+
+def ask_menu_choice(min_max = (1, 5)):
 
     print("1. Afficher mon annuaire")
     print("2. Ajouter un contact")
@@ -155,15 +174,28 @@ def ask_contact_information():
     
     return contact
 
-def ask_annuaire_contacts(client, annuaire_name):
-    client.convert_and_transmit_data("DATA_REQUEST", {"token": client.get_token(), "data": {"annaire": annuaire_name}})
+def ask_admin_menu_choice(min_max = (1, 4)):
+    clear()
+    
+    print("1. Ajouter un utilisateur")
+    print("2. Supprimer un utilisateur")
+    print("3. Modifier un utilisateur")
+    print("4. Quitter")
+
+    choice = input("Choice: ")
+    while(choice.isdigit() == False or int(choice) < min_max[0] or int(choice) > min_max[1]):
+        print("Invalid Choice")
+        ask_admin_menu_choice()
+    
+    return choice
+    
+
 
 def main():
     # Global Variables
     username = ""
     password = ""
     logged_in = False
-
     
     client = Client()
     client.establish_connection("localhost", 5555)
@@ -186,7 +218,6 @@ def main():
 
         if(logged_in == False):
             print("Couldn't Log In, Try Again")
-            return
         else:
             print("Logged In Successfully")
             logged_in = True
@@ -195,33 +226,66 @@ def main():
     # Logged in, now displaying the menu and asking for user input    
     while True:
 
-        # Displaying the menu
-        choice = ask_menu_choice()
-        match(choice):
-            case 1:
-                # Afficher mon annuaire
-                client.convert_and_transmit_data("DATA_REQUEST", {"id": username, "token": client.get_token()})
-                break
-            case 2:
-                # Ajouter un contact
-                contact = ask_contact_information()
+        if(client.is_admin == True):
+            # Displaying Admin menu
+            user_input = ask_admin_menu_choice()
 
-                client.convert_and_transmit_data("ADD_CONTACT", {"id": username, "token": client.get_token(), "contact": contact})
-                break
-            case 3:
-                # Supprimer un contact
+            match(user_input):
+                case 1:
+                    # Add User
+                    client.convert_and_transmit_data(ADD_USER_TYPE, {"token": client.get_token(), "username": "username", "password": "password"})
+                    break
+                case 2:
+                    # Delete User
+                    client.convert_and_transmit_data(REMOVE_USER_TYPE, {"token": client.get_token(), "username": "username", "password": "password"})
+                    break
+                case 3:
+                    # Edit User
+                    client.convert_and_transmit_data(EDIT_USER_TYPE, {"token": client.get_token(), "username": username, "edited_user": "password"})
+                    break
+                case 4:
+                    # Quit
+                    client.convert_and_transmit_data(DISCONNECT_TYPE, {"token": client.get_token(), "username": username})
+                    break
+                case _:
+                    print("Invalid Choice")
+                    break
 
-                break
-            case 4:
-                # Rechercher un contact
 
-                break
-            case 5:
-                # Quitter
-                break
-            case _:
-                print("Invalid Choice")
-                break
+
+        else:
+            # Displaying the menu
+            user_input = ask_menu_choice((1, 5))
+            annuaire_name = username + "_annuaire"
+            match(user_input):
+                case 1:
+                    # Afficher mon annuaire
+                    client.convert_and_transmit_data(DATA_REQUEST_TYPE, {"token": client.get_token(), "username": username, "annuaire_name": annuaire_name})
+                    break
+                case 2:
+                    # Ajouter un contact
+                    contact = ask_contact_information()
+
+                    client.convert_and_transmit_data(ADD_CONTACT_TYPE, {"token": client.get_token(), "username": username, "annuaire_name": annuaire_name, "contact": contact})
+                    break
+                case 3:
+                    # Supprimer un contact
+                    ask_annuaire_contacts(client, annuaire_name)
+
+                    client.convert_and_transmit_data(REMOVE_CONTACT_TYPE, {"token": client.get_token(), "username": username, "annuaire_name": annuaire_name, "contact_line": ""})
+
+                    break
+                case 4:
+                    # Rechercher un contact
+
+                    break
+                case 5:
+                    # Quitter
+                    client.convert_and_transmit_data(DISCONNECT_TYPE, {"token": client.get_token(), "username": username})
+                    break
+                case _:
+                    print("Invalid Choice")
+                    break
 
 if __name__ == "__main__":
     main()
