@@ -1,2 +1,2 @@
 Mellogang
-isAdmin=True
+isAdmin=False

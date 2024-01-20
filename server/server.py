@@ -236,7 +236,7 @@ def read_files(path):
 def edit_file(path, line, content):
     try:
         lines = read_files(path)
-        lines[line - 1] = content
+        lines[line] = content
         with open(f"{path}", "w") as annuaire_file:
             annuaire_file.writelines(lines)
             annuaire_file.close()
@@ -245,6 +245,15 @@ def edit_file(path, line, content):
         print(f"An error occured while editing file: {e}")
         return False
 
+def remove_line(filename, index):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+
+    if index < len(lines):
+        del lines[index]
+
+    with open(filename, 'w') as file:
+        file.writelines(lines)
 
 def handle_look_directory_request(client_socket, data):
     annuaire_file_name = data["data"]["annuaire_content"]
@@ -300,34 +309,6 @@ def handle_add_contact_request(client_socket, data):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Adding Contact"})    
 
 def handle_edit_contact_request(client_socket, data):
-    if("contact_index" not in data["data"] or "new_contact_info" not in data["data"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Line Number or New Contact Info"})
-        return
-
-    # check if user has access to directory, if yes, edit contact in directory (edit entry in {user}_annuaire.txt)
-    username = data["data"]["username"]
-    contact_index = data["data"]["contact_index"]
-    new_contact_info = data["data"]["new_contact_info"]
-
-    # check if user_folder exists in user_files folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
-        return
-    
-    # check if {user}_annuaire.txt exists in user_folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}/{username}_annuaire.txt"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{username}_annuaire.txt Not Found in {USER_FOLDER}/{username}"})
-        return
-    
-    result = edit_file(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", contact_index, new_contact_info)
-
-    if(result):
-        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Edited Successfully"})
-    else:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Editing Contact"})
-
-
-def handle_remove_contact_request(client_socket, data):
     if("contact_index" not in data["data"]):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Line Number or New Contact Info"})
         return
@@ -347,6 +328,9 @@ def handle_remove_contact_request(client_socket, data):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{username}_annuaire.txt Not Found in {USER_FOLDER}/{username}"})
         return
     
+    # prepare new contact info to be written in {user}_annuaire.txt
+    new_contact_info = f"{new_contact_info['name']},{new_contact_info['first_name']},{new_contact_info['email']},{new_contact_info['phone']},{new_contact_info['address']}\n"
+    
     result = edit_file(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", contact_index, new_contact_info)
 
     if(result):
@@ -355,9 +339,34 @@ def handle_remove_contact_request(client_socket, data):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Editing Contact"})
 
 
+def handle_remove_contact_request(client_socket, data):
+    if("contact_index" not in data["data"]):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Line Number or New Contact Info"})
+        return
+
+    # check if user has access to directory, if yes, edit contact in directory (edit entry in {user}_annuaire.txt)
+    username = data["data"]["username"]
+    contact_index = data["data"]["contact_index"]
+
+    # check if user_folder exists in user_files folder
+    if not os.path.exists(f"{USER_FOLDER}/{username}"):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
+        return
+    
+    # check if {user}_annuaire.txt exists in user_folder
+    if not os.path.exists(f"{USER_FOLDER}/{username}/{username}_annuaire.txt"):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{username}_annuaire.txt Not Found in {USER_FOLDER}/{username}"})
+        return
+    
+    remove_line(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", contact_index)
+
+    convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Successfully Edited"})
+    
+
+
 def handle_search_contact_request(client_socket, data):
     username = data["data"]["username"]
-    annuaire_file_name = data["data"]["annuaire_content"] + "_annuaire.txt"
+    annuaire_file_name = data["data"]["annuaire_name"]
     word_to_search = data["data"]["word_to_search"]
     found_lines = []
 
@@ -373,7 +382,7 @@ def handle_search_contact_request(client_socket, data):
     
     # open file {user}_annuaire.txt and search for contact
     try:
-        with open(annuaire_file_name, 'r') as annuaire_file:
+        with open(f"{USER_FOLDER}/{username}/{annuaire_file_name}.txt", 'r') as annuaire_file:
             for ligne in annuaire_file:
                 word_to_search = word_to_search.lower()
                 ligne = ligne.lower()
@@ -459,7 +468,19 @@ def handle_edit_user_request(client_socket, data):
         os.rename(f"{USER_FOLDER}/{new_username}/{user_to_edit}_annuaire.txt", f"{USER_FOLDER}/{new_username}/{new_username}_annuaire.txt")
 
         # edit user_info.txt and change first line with new password
-        
+        try:
+            with open(f"{USER_FOLDER}/{new_username}/user_info.txt", "r") as user_info_file:
+                lines = user_info_file.readlines()
+                lines[0] = new_password
+                lines[1] = f"isAdmin={new_user_admin}"
+                user_info_file.close()
+
+                edit_file(f"{USER_FOLDER}/{new_username}/user_info.txt", 0, lines[0])
+                edit_file(f"{USER_FOLDER}/{new_username}/user_info.txt", 1, lines[1])
+        except Exception as e:
+            print(f"An error occured while editing user_info.txt: {e}")
+            convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Editing User"})
+            return
 
         convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "User Edited Successfully"})
     except Exception as e:
