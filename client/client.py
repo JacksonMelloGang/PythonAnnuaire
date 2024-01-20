@@ -167,16 +167,17 @@ def ask_server_annuaire_contacts(client, annuaire_name):
         return contacts
     else:
         print("Une erreur est survenue lors de la demande des contacts")
-        return False
+        return [] # Empty List
 
-def ask_menu_choice(min_max = (1, 6)):
+def ask_menu_choice(min_max = (1, 7)):
 
     print("1. Afficher mon annuaire")
     print("2. Ajouter un contact")
     print("3. Supprimer un contact")
-    print("4. Rechercher un contact")
-    print("5. Gérer les permissions de mon annuaire")
-    print("6. Quitter")
+    print("4. Modifier un contact")
+    print("5. Rechercher un contact")
+    print("6. Gérer les permissions de mon annuaire")
+    print("7. Quitter")
 
     choice = input("Votre choix: ")
 
@@ -248,13 +249,13 @@ def list_contacts(contacts):
         contact_address = ""
 
         # if contact_info[x] is empty or does not exist, we set contact_name to N/A
-        contact_name = "N/A" if (contact_info or contact_info[0] == "") else contact_info[0]
-        contact_first_name = "N/A" if (contact_info or contact_info[1] == "") else contact_info[1]
-        contact_email = "N/A" if (contact_infoor contact_info[2] == "") else contact_info[2]
-        contact_phone = "N/A" if (contact_info or contact_info[3] == "") else contact_info[3]
-        contact_address = "N/A" if (contact_info or contact_info[4] == "") else contact_info[4]
+        contact_name = "N/A" if (not contact_info or contact_info[0] == "") else contact_info[0]
+        contact_first_name = "N/A" if (not contact_info or contact_info[1] == "") else contact_info[1]
+        contact_email = "N/A" if (not contact_info or contact_info[2] == "") else contact_info[2]
+        contact_phone = "N/A" if (not contact_info or contact_info[3] == "") else contact_info[3]
+        contact_address = "N/A" if (not contact_info or contact_info[4] == "") else contact_info[4]
         
-        print(f"{index + 1}. {contact_name} {contact_first_name} {contact_email} {contact_phone} {contact_address}")
+        print(f"{index + 1}. Nom: {contact_name} Prenom: {contact_first_name} Email: {contact_email} Tel: {contact_phone} Adresse: {contact_address}")
 
 def main():
     # Global Variables
@@ -316,20 +317,22 @@ def main():
                     break
         else:
             # Displaying the menu
-            user_input = ask_menu_choice((1, 6))
+            user_input = ask_menu_choice((1, 7))
             annuaire_name = username + "_annuaire"
             match(int(user_input)):
                 case 1:
                     # Afficher mon annuaire
                     contacts = ask_server_annuaire_contacts(client, annuaire_name)
 
-                    if(contacts == False):
+                    if(contacts == []):
                         print("Vous n'avez aucun contact dans votre annuaire")
                         time.sleep(1)
                         clear()
                     else:
+                        clear()
                         print("Voici les contacts dans votre annuaire:")
                         list_contacts(contacts)
+                        print("=====================================")
                         
                 case 2:
                     # Ajouter un contact
@@ -378,10 +381,51 @@ def main():
                         clear()
                         return
 
-                    client.convert_and_transmit_data(REMOVE_CONTACT_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name, "contact_line": ""})
+                    client.convert_and_transmit_data(REMOVE_CONTACT_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name, "contact_index": contact_index})
                 case 4:
                     # Modifier un contact
-                    pass
+                    contacts = ask_server_annuaire_contacts(client, annuaire_name)
+                    if(contacts == False):
+                        print("Vous n'avez aucun contact dans votre annuaire")
+                        time.sleep(1)
+                        clear()
+                        return
+                    
+                    print("Voici les contacts dans votre annuaire:")
+                    list_contacts(contacts)
+                    contact_index = 0
+
+                    # ask for contact index and check if valid
+                    try:
+                        contact_index = input("Veuillez entrer le numéro du contact à modifier: ")
+                        contact_index = int(contact_index) - 1
+
+                        # check if valid number
+                        if(contact_index < 0 or contact_index > len(contacts)):
+                            print("Invalid Number")
+                            print("Retour au menu.")
+                            time.sleep(1)
+                            clear()
+                            return
+
+                        # ask for new contact information
+                        contact = ask_contact_information()
+
+                        # send request to server
+                        client.convert_and_transmit_data(EDIT_CONTACT_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name, "contact_line": contact_index, "contact": contact})
+
+                        
+
+
+
+                    except(Exception):
+                        print("Invalid Number")
+                        print("Retour au menu.")
+                        time.sleep(1)
+                        clear()
+                        return
+                    
+
 
                 case 5:
                     # Rechercher un contact

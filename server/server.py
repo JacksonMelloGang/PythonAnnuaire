@@ -211,6 +211,9 @@ def read_files(path):
                     # remove \n at the end of each line
                     lines[i] = lines[i].replace("\n", "")
                 annuaire_file.close()
+    else:
+        print(f"File {path} doesn't exists")
+        lines = False
 
     return lines
 
@@ -235,16 +238,28 @@ def handle_look_directory_request(client_socket, data):
 
     annuaire_content = read_files(f"{USER_FOLDER}/{user_folder_name}/{annuaire_file_name}.txt")
 
-    # if empty file, set contacts to "[]"
-    if len(annuaire_content) == 0:
-        annuaire_content = False
-
-        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"annuaire": annuaire_file_name, "contacts": annuaire_content})
-    else:
+    if annuaire_content is  False:
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{user_folder_name}_annuaire.txt Not Found in {USER_FOLDER}/{user_folder_name}"})
-            
+        return
+    
+    # If the file is empty, set annuaire_content to []
+    if len(annuaire_content) == 0:
+        annuaire_content = []
+
+    convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"annuaire": annuaire_file_name, "contacts": annuaire_content})
+        
+    
+ 
 def handle_add_contact_request(client_socket, data):
     username = data["data"]["username"]
+
+    if("contact" not in data["data"]):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Info"})
+        return
+    
+    if("name" not in data["data"]["contact"] or "first_name" not in data["data"]["contact"] or "email" not in data["data"]["contact"] or "phone" not in data["data"]["contact"] or "address" not in data["data"]["contact"]):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Info"})
+        return
 
     # check if user_folder exists in user_files folder
     if not os.path.exists(f"{USER_FOLDER}/{username}"):
@@ -269,13 +284,13 @@ def handle_add_contact_request(client_socket, data):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Adding Contact"})    
 
 def handle_edit_contact_request(client_socket, data):
-    if("contact_line" not in data["data"] or "new_contact_info" not in data["data"]):
+    if("contact_index" not in data["data"] or "new_contact_info" not in data["data"]):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Line Number or New Contact Info"})
         return
 
     # check if user has access to directory, if yes, edit contact in directory (edit entry in {user}_annuaire.txt)
     username = data["data"]["username"]
-    contact_line = data["data"]["contact_line"]
+    contact_index = data["data"]["contact_index"]
     new_contact_info = data["data"]["new_contact_info"]
 
     # check if user_folder exists in user_files folder
@@ -288,7 +303,7 @@ def handle_edit_contact_request(client_socket, data):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{username}_annuaire.txt Not Found in {USER_FOLDER}/{username}"})
         return
     
-    result = edit_file(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", contact_line, new_contact_info)
+    result = edit_file(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", contact_index, new_contact_info)
 
     if(result):
         convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Edited Successfully"})
@@ -297,13 +312,13 @@ def handle_edit_contact_request(client_socket, data):
 
 
 def handle_remove_contact_request(client_socket, data):
-    if("contact_line" not in data["data"]):
+    if("contact_index" not in data["data"]):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Line Number or New Contact Info"})
         return
 
     # check if user has access to directory, if yes, edit contact in directory (edit entry in {user}_annuaire.txt)
     username = data["data"]["username"]
-    contact_line = data["data"]["contact_line"]
+    contact_index = data["data"]["contact_index"]
     new_contact_info = data["data"]["new_contact_info"]
 
     # check if user_folder exists in user_files folder
@@ -316,7 +331,7 @@ def handle_remove_contact_request(client_socket, data):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{username}_annuaire.txt Not Found in {USER_FOLDER}/{username}"})
         return
     
-    result = edit_file(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", contact_line, new_contact_info)
+    result = edit_file(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", contact_index, new_contact_info)
 
     if(result):
         convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Edited Successfully"})
