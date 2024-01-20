@@ -142,16 +142,18 @@ def verify_token(username, token):
         return False
 
 def is_admin(username):
+    is_admin = False
     # check with username if he has admin rights in user_info.txt
     if os.path.exists(f"{USER_FOLDER}/{username}/user_info.txt"):
         with open(f"{USER_FOLDER}/{username}/user_info.txt", "r") as user_info_file:
             # while we don't reach the end of the file, we read the next line to check if it's "isAdmin=True"
-            while True:
-                next_line = user_info_file.readline()
-                if not next_line:
+            lines = user_info_file.readlines()
+            for line in lines:
+                if line.strip() == "isAdmin=True":
+                    is_admin = True
                     break
-                if next_line == "isAdmin=True":
-                    return True
+            user_info_file.close()
+    return is_admin
 
 def handle_disconnect(client_socket):
     # close the connection & invalidate token
@@ -160,6 +162,12 @@ def handle_disconnect(client_socket):
  
 
 def handle_user_list_request(client_socket, data):
+    verify_token_result = verify_token(data["data"]["username"], data["data"]["token"])
+
+    if(not verify_token_result):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username/Token Mismatch, Please Login Again."})
+        return
+
     # check if user is admin
     if not is_admin(data["data"]["username"]):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
@@ -428,27 +436,34 @@ def handle_remove_user_request(client_socket, data):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Removing User"})
 
 def handle_edit_user_request(client_socket, data):
+    username = data['data']['username']
     user_to_edit = data['data']['user_to_edit']
 
     new_username = data['data']['new_username']
     new_password = data['data']['new_password']
-    new_user_admin = data['data']['new_user_admin']
+    new_user_admin = data['data']['new_is_admin']
+
+    if(not is_admin(username)):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
+        return
 
     # check if username exists in user_files folder
     if not os.path.exists(f"{USER_FOLDER}/{user_to_edit}"):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
         return
     
-    # remove user folder
     try:
-        os.remove(f"{USER_FOLDER}/{user_to_edit}")
-        success = create_new_user_folder(new_username, new_password, new_user_admin)
-        if(success):
-            convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "User Edited Successfully"})
-        else:
-            convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Editing User"})
+        # rename folder with new username
+        os.rename(f"{USER_FOLDER}/{user_to_edit}", f"{USER_FOLDER}/{new_username}")
+        # rename annuaire_file.txt
+        os.rename(f"{USER_FOLDER}/{new_username}/{user_to_edit}_annuaire.txt", f"{USER_FOLDER}/{new_username}/{new_username}_annuaire.txt")
+
+        # edit user_info.txt and change first line with new password
+        
+
+        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "User Edited Successfully"})
     except Exception as e:
-        print(f"An error occured while removing user folder: {e}")
+        print(f"An error occured while editing user folder: {e}")
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Removing User"})
         
 
@@ -487,83 +502,80 @@ def handle_client(client_socket):
     # Affiche l'adresse IP du client
     print(f"Accepted Connection from {client_socket.getpeername()} - IP: {client_socket.getpeername()[0]}")
 
-    try: 
-        # Loop to get and send back data
-        while True:
-            json_data = receive_and_convert_data(client_socket)
-            if not json_data:
-                break
+    # Loop to get and send back data
+    while True:
+        json_data = receive_and_convert_data(client_socket)
+        if not json_data:
+            break
 
-            if(json_data is None):
-                print(f"Couldn't Convert Received Data from {client_socket.getpeername()}")
-                return
+        if(json_data is None):
+            print(f"Couldn't Convert Received Data from {client_socket.getpeername()}")
+            return
             
-            request_type = json_data["type"]
+        request_type = json_data["type"]
 
-            if(request_type is None):
-                print(f"Invalid Data Type from {client_socket.getpeername()} \nReceived Data Type: {request_type}\nFull Data:\n {json_data}")
+        if(request_type is None):
+            print(f"Invalid Data Type from {client_socket.getpeername()} \nReceived Data Type: {request_type}\nFull Data:\n {json_data}")
+            return
+
+        if(request_type == CONNEXION_TYPE):
+            handle_login(client_socket, json_data["data"])
+        else:
+            # verify if token and username exists
+            if("username" not in json_data["data"] or "token" not in json_data["data"]):
+                convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Token/Username"})
                 return
 
-            if(request_type == CONNEXION_TYPE):
-                handle_login(client_socket, json_data["data"])
-            else:
-                # verify if token and username exists
-                if("username" not in json_data["data"] or "token" not in json_data["data"]):
-                    convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Token/Username"})
-                    return
+            verify_token_result = verify_token(json_data["data"]["username"], json_data["data"]["token"])
 
-                verify_token_result = verify_token(json_data["data"]["username"], json_data["data"]["token"])
+            # Middleware, so unless we trying to connect, we verify the token sistematically
+            if not verify_token_result:
+                convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username/Token Mismatch, Please Login Again."})
+                client_socket.close()
+                print(f"Connexion fermée avec {client_socket.getpeername()}")
+                return
+            #########################################################################################
 
-                # Middleware, so unless we trying to connect, we verify the token sistematically
-                if not verify_token_result:
-                    convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username/Token Mismatch, Please Login Again."})
-                    client_socket.close()
-                    print(f"Connexion fermée avec {client_socket.getpeername()}")
-                    return
-                #########################################################################################
+            # match is equivalent of switch case in python
+            print(f"Received Request Type: {request_type} from {client_socket.getpeername()}")
+            match(request_type):
+                case "DISCONNECT":
+                    handle_disconnect(client_socket)
 
-                # match is equivalent of switch case in python
-                print(f"Received Request Type: {request_type} from {client_socket.getpeername()}")
-                match(request_type):
-                    case "DISCONNECT":
-                        handle_disconnect(client_socket)
+                case "LOOK_DIRECTORY":
+                    handle_look_directory_request(client_socket, json_data)
+                case "ADD_CONTACT":
+                    handle_add_contact_request(client_socket, json_data)
+                case "EDIT_CONTACT":
+                    handle_edit_contact_request(client_socket, json_data)
+                case "REMOVE_CONTACT":
+                    handle_remove_contact_request(client_socket, json_data)
+                case "SEARCH_CONTACT":
+                    handle_search_contact_request(client_socket, json_data)
 
-                    case "LOOK_DIRECTORY":
-                        handle_look_directory_request(client_socket, json_data)
-                    case "ADD_CONTACT":
-                        handle_add_contact_request(client_socket, json_data)
-                    case "EDIT_CONTACT":
-                        handle_edit_contact_request(client_socket, json_data)
-                    case "REMOVE_CONTACT":
-                        handle_remove_contact_request(client_socket, json_data)
-                    case "SEARCH_CONTACT":
-                        handle_search_contact_request(client_socket, json_data)
+                case "LIST_DIRECTORIES":
+                    handle_list_directories_request(client_socket, json_data)
+                case "LIST_USER_TO_DIRECTORY":
+                    handle_list_user_to_directory_request(client_socket, json_data)
+                case "ADD_USER_TO_DIRECTORY":
+                    handle_add_user_to_directory_request(client_socket, json_data)
+                case "REMOVE_USER_TO_DIRECTORY_TYPE":
+                    handle_remove_user_from_directory_request(client_socket, json_data)
 
-                    case "LIST_DIRECTORIES":
-                        handle_list_directories_request(client_socket, json_data)
-                    case "LIST_USER_TO_DIRECTORY":
-                        handle_list_user_to_directory_request(client_socket, json_data)
-                    case "ADD_USER_TO_DIRECTORY":
-                        handle_add_user_to_directory_request(client_socket, json_data)
-                    case "REMOVE_USER_TO_DIRECTORY_TYPE":
-                        handle_remove_user_from_directory_request(client_socket, json_data)
-
-                    case "LIST_USERS":
-                        handle_user_list_request(client_socket, json_data)
-                    case "ADD_USER":
-                        handle_add_user_request(client_socket, json_data)
-                    case "REMOVE_USER":
-                        handle_remove_user_request(client_socket, json_data)
-                    case "EDIT_USER":
-                        handle_edit_user_request(client_socket, json_data)
+                case "LIST_USERS":
+                    handle_user_list_request(client_socket, json_data)
+                case "ADD_USER":
+                    handle_add_user_request(client_socket, json_data)
+                case "REMOVE_USER":
+                    handle_remove_user_request(client_socket, json_data)
+                case "EDIT_USER":
+                    handle_edit_user_request(client_socket, json_data)
                             
-                    case _: # default case
-                        print(f"Invalid Request from {client_socket.getpeername()}")
-                        request = convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Invalid Request"})
-                        client_socket.send(request)
-    except Exception:
-        print(f"Connexion fermée avec {client_socket.getpeername()}")
-        return
+                case _: # default case
+                    print(f"Invalid Request from {client_socket.getpeername()}")
+                    request = convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Invalid Request"})
+                    client_socket.send(request)
+
 
 def start_server():
     host = 'localhost'
