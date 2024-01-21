@@ -150,10 +150,10 @@ def main():
     client.establish_connection("localhost", 5555)
 
     if(client.get_connection_status() == False):
-        print("Couldn't connect to the server")
+        print("Erreur 101 - Connexion Impossible avec le serveur")
         return
     else:
-        print("Successfully connected to the server")
+        print("Connexion Réussie")
 
     # Connected to the server, now asking for credentials
     while(logged_in == False):
@@ -235,6 +235,9 @@ if __name__ == "__main__":
     except(KeyboardInterrupt):
         print("Exiting...")
         exit(0)
+    except(ConnectionResetError):
+        print("Erreur 100 - Connexion Perdue")
+        exit(1)
     except Exception as e:
         print("An Unknow Error Has Occured \n")
         print(e)

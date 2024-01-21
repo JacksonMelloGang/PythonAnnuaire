@@ -6,7 +6,6 @@ def list_contacts(contacts):
     for index, contact in enumerate(contacts):
         contact_info = contact.split(",")
         if len(contact_info) < 5:  # Check if there are enough elements in contact_info
-            print(f"[WARN] Ligne Invalide, [ {contact} ]")
             continue
 
         # if contact_info[x] is empty or does not exist, we set contact_name to N/A
