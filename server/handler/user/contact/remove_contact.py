@@ -1,5 +1,7 @@
 import os
 
+from constants import ERROR_TYPE, USER_FOLDER, RESPONSE_OK_TYPE
+from utils import convert_and_transmit_data, remove_line
 
 
 def handle_remove_contact_request(client_socket, data):

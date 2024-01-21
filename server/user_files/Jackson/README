@@ -1,0 +1,4 @@
+Jackson_annuaire => Annuaire
+share_to_user => File where we store username that has access to my directory
+shared_to_me => File where we store folder the user has access to
+user_info => password , isAdmin=True/False

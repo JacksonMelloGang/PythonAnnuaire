@@ -1,5 +1,9 @@
 import os
 
+from constants import ERROR_TYPE, USER_FOLDER, RESPONSE_OK_TYPE
+from utils import convert_and_transmit_data
+
+
 def handle_add_contact_request(client_socket, data):
     username = data["data"]["username"]
 
@@ -25,7 +29,8 @@ def handle_add_contact_request(client_socket, data):
         # open {user}_annuaire.txt and append contact to it
         with open(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", "a") as annuaire_file:
             contact = data["data"]["contact"]
-            annuaire_file.write(f"{contact['name']},{contact['first_name']},{contact['email']},{contact['phone']},{contact['address']}\n")
+            annuaire_file.write(f"{contact['name']},{contact['first_name']},{contact['email']},{contact['phone']},{contact['address']}")
+            annuaire_file.write("\n")
             annuaire_file.close()
 
             convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Added Successfully"})

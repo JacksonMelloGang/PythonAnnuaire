@@ -1,10 +1,10 @@
 import time
 
-from client.utils.constants import EDIT_CONTACT_TYPE, RESPONSE_OK_TYPE
-from client.utils.contact.ask_contact import ask_server_annuaire_contacts
-from client.utils.contact.ask_contact_info import ask_contact_information
-from client.utils.display.list_contacts import list_contacts
-from client.utils.utils import clear
+from utils.constants import EDIT_CONTACT_TYPE, RESPONSE_OK_TYPE
+from utils.contact.ask_contact import ask_server_annuaire_contacts
+from utils.contact.ask_contact_info import ask_contact_information
+from utils.display.list_contacts import list_contacts
+from utils.utils import clear
 
 
 def case_edit_contact(annuaire_name, client):

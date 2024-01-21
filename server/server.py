@@ -2,6 +2,7 @@ import socket
 import threading
 import os
 
+from constants import USER_FOLDER, CONNEXION_TYPE, ERROR_TYPE
 from handler.admin.add_user import handle_add_user_request
 from handler.admin.del_user import handle_remove_user_request
 from handler.admin.edit_user import handle_edit_user_request
@@ -12,89 +13,47 @@ from handler.user.contact.add_contact import handle_add_contact_request
 from handler.user.contact.edit_contact import handle_edit_contact_request
 from handler.user.contact.remove_contact import handle_remove_contact_request
 from handler.user.contact.search_contact import handle_search_contact_request
-from handler.user.directory.look_directory import handle_look_directory_request
-from utils import is_admin, convert_and_transmit_data, receive_and_convert_data
-
-SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
-
-USER_FOLDER = os.path.join(SCRIPT_DIRECTORY, "user_files")
-valid_token = {}
+from handler.user.directory.add_user_directory import handle_add_user_to_directory_request
+from handler.user.directory.list_directories import handle_list_directories_request
+from handler.user.directory.list_user_to_directory import handle_list_user_to_directory_request
+from handler.user.directory.look_into_directory import handle_look_directory_request
+from handler.user.directory.rm_user_directory import handle_remove_user_from_directory_request
+from utils import convert_and_transmit_data, receive_and_convert_data
 
 # create USER_FOLDER if it doesn't exist
 if not os.path.exists(USER_FOLDER):
-    os.makedirs(USER_FOLDER)
+    try:
+        os.makedirs(USER_FOLDER)
+        # create default folder with name: admin, a user_info.txt in it with password at first line and isAdmin=True at 2nd line
+        os.makedirs(f"{USER_FOLDER}/admin")
+        with open(f"{USER_FOLDER}/admin/user_info.txt", "w") as f:
+            f.write("password\n")
+            f.write("isAdmin=True\n")
+            f.close()
+    except Exception as e:
+        print(f"Couldn't Create {USER_FOLDER} Folder, Please Check Permissions and Try Again.")
+        print(e)
+        exit(1)
 
-# Received Constants, used to identify the type of request: (Directory = Annuaire)
-CONNEXION_TYPE = "CONNEXION" # Provided => {"username": "username", "password": "password"}
-DISCONNECT_TYPE = "DISCONNECT" # Provided => {}
+def share_file_with_user(initiating_username, target_username):
+    # Path to the target user's shared_to_user.txt file
+    target_user_file = f"{USER_FOLDER}/{target_username}/shared_to_user.txt"
 
-# Directory
-LOOK_DIRECTORY = "LOOK_DIRECTORY" # Provided => {"token": token, "data": {"annuaire": "directory_name"}}
-ADD_CONTACT_TYPE = "ADD_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
-EDIT_CONTACT_TYPE = "EDIT_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
-REMOVE_CONTACT_TYPE = "REMOVE_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
-SEARCH_CONTACT_TYPE = "SEARCH_CONTACT" # Provided => {"token": token, "data": {"annuaire": "directory_name", "contact": {"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}}}
+    # Open the file in append mode and write the initiating user's name
+    with open(target_user_file, 'a') as f:
+        f.write(f"{initiating_username}\n")
 
-# Share Directory
-LIST_DIRECTORIES_TYPE = "LIST_DIRECTORIES" # Provided => {"token": token, "data": {}}
-LIST_USER_TO_DIRECTORY_TYPE = "LIST_USER_TO_DIRECTORY"
-ADD_USER_TO_DIRECTORY_TYPE = "ADD_USER_TO_DIRECTORY" # Provided => {"token": token, "data": {"annuaire": "directory_name", "username": "username"}}
-REMOVE_USER_TO_DIRECTORY_TYPE = "REMOVE_USER_TO_DIRECTORY" # Provided => {"token": token, "data": {"annuaire": "directory_name", "username": "username"}}
+def get_shared_files(target_username):
+    # Path to the target user's shared_to_user.txt file
+    target_user_file = f"{USER_FOLDER}/{target_username}/shared_to_me.txt"
 
-# Admin
-LIST_USERS_TYPE = "LIST_USERS" # Provided => {"token": token, "data": {}}
-USER_INFO_TYPE = "USER_INFO" # Provided => {"token": token, "data": {"username": "username", "looked_user": "looked_user"}}
-ADD_USER_TYPE = "ADD_USER" # Provided => {"token": token, "data": {"username": "username", "password": "password"}}
-REMOVE_USER_TYPE = "REMOVE_USER" # Provided => {"token": token, "data": {"username": "username", "password": "password"}}
-EDIT_USER_TYPE = "EDIT_USER" # Provided => {"token": token, "data": {"username": "username", "password": "password"}}
+    # Open the file in read mode and get all the lines
+    with open(target_user_file, 'r') as f:
+        shared_files = [line.strip() for line in f.readlines()]
 
-# Sent Constants, used to identify the type of request: (Directory = Annuaire)
-CONNEXION_OK_TYPE = "CONNEXION_OK" # Provided => {"message": "Valid Credentials", "token": token}
-DISCONNECT_OK_TYPE = "DISCONNECT_OK" # Provided => {"message": "Disconnected Successfully"}
-RESPONSE_OK_TYPE = "RESPONSE_OK" # Provided => {"data": {"annuaire": "directory_name", "contacts": [{"name": "name", "first_name": "first_name", "phone": "phone", "email": "email"}, ...]}}
-ERROR_TYPE = "ERROR" # Provided => {"message": "Error Message"}
+    return shared_files
 
-
-def handle_list_directories_request(client_socket, data):
-    pass
-
-def handle_list_user_to_directory_request(client_socket, data):
-    # check if it's his directory
-    username = data["data"]["username"]
-
-    # check if user_folder exists in user_files folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
-        return
-
-    
-    pass
-
-def handle_add_user_to_directory_request(client_socket, data):
-    pass
-
-def handle_remove_user_from_directory_request(client_socket, data):
-    # check if user is admin
-    if not is_admin(data["data"]["username"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
-        return
-    
-    # check if user_files folder exists
-    if not os.path.exists(USER_FOLDER):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "No User Found"})
-        return
-    
-    # get name of every folder in ./user_files
-    user_folders = os.listdir(USER_FOLDER)
-    user_to_delete = data["data"]["user_to_delete"]
-
-    # check if username exists in user_files folder
-    if user_to_delete not in user_folders:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"Username {user_to_delete} Doesn't Exists"})
-        return
-    
-    pass
-
+# list directory user has access to
 
 def handle_client(client_socket):
     json_data = None
@@ -160,7 +119,7 @@ def handle_client(client_socket):
                     handle_list_user_to_directory_request(client_socket, json_data)
                 case "ADD_USER_TO_DIRECTORY":
                     handle_add_user_to_directory_request(client_socket, json_data)
-                case "REMOVE_USER_TO_DIRECTORY_TYPE":
+                case "REMOVE_USER_TO_DIRECTORY":
                     handle_remove_user_from_directory_request(client_socket, json_data)
 
                 case "LIST_USERS":

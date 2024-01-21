@@ -1,8 +1,8 @@
 import time
 
-from client.utils.constants import ADD_CONTACT_TYPE, RESPONSE_OK_TYPE
-from client.utils.contact.ask_contact_info import ask_contact_information
-from client.utils.utils import clear
+from utils.constants import ADD_CONTACT_TYPE, RESPONSE_OK_TYPE
+from utils.contact.ask_contact_info import ask_contact_information
+from utils.utils import clear
 
 
 def case_add_contact(annuaire_name, client):

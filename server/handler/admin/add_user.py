@@ -1,5 +1,9 @@
 import os
 
+from constants import USER_FOLDER, ADD_USER_TYPE, ERROR_TYPE
+from utils import convert_and_transmit_data
+
+
 def handle_add_user_request(client_socket, data):
     new_username = data["data"]["new_username"]
     new_password = data["data"]["new_password"]
@@ -21,7 +25,7 @@ def handle_add_user_request(client_socket, data):
 def create_new_user_folder(username, password, is_user_admin = False):
     try:
         # create folder for user, and if user_info.txt doesn't exist, create it and write password in it
-        os.makedirs(f"{USER_FOLDER}/{username}", exist_ok=True)
+        os.makedirs(f"{USER_FOLDER}/{username}", exist_ok=False)
         with open(f"{USER_FOLDER}/{username}/user_info.txt", "w") as user_info_file:
             user_info_file.write(password)
             user_info_file.write("\n")
@@ -32,7 +36,18 @@ def create_new_user_folder(username, password, is_user_admin = False):
         with open(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", "w") as user_annuaire_file:
             user_annuaire_file.write("")
             user_annuaire_file.close()
-            return True
+        # create shared_to_me.txt and shared_by_me.txt in user folder
+        with open(f"{USER_FOLDER}/{username}/share_to_user.txt", "w") as shared_to_me_file:
+            shared_to_me_file.write("")
+            shared_to_me_file.close()
+        with open(f"{USER_FOLDER}/{username}/shared_by_me.txt", "w") as shared_by_me_file:
+            shared_by_me_file.write("")
+            shared_by_me_file.close()
+        
+        return True
+    except OSError as err:
+        print("Couldn't create user because it already exists !")
+        return False
     except Exception as e:
         print(f"An error occured while creating new user folder: {e}")
         return False

@@ -1,9 +1,9 @@
 import time
 
-from client.utils.constants import SEARCH_CONTACT_TYPE, RESPONSE_OK_TYPE
-from client.utils.contact.ask_contact import ask_server_annuaire_contacts
-from client.utils.display.list_contacts import list_contacts
-from client.utils.utils import clear
+from utils.constants import SEARCH_CONTACT_TYPE, RESPONSE_OK_TYPE
+from utils.contact.ask_contact import ask_server_annuaire_contacts
+from utils.display.list_contacts import list_contacts
+from utils.utils import clear
 
 
 def case_search_contact(annuaire_name, client):
