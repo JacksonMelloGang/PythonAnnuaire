@@ -1,7 +1,7 @@
 import json
 import os
 
-
+from constants import USER_FOLDER
 
 def read_files(path):
     lines = []
@@ -26,8 +26,8 @@ def edit_file(path, line, content):
         lines = read_files(path)
         lines[line] = content
         with open(f"{path}", "w") as annuaire_file:
-            annuaire_file.writelines(lines)
-            annuaire_file.close()
+            for line in lines:
+                annuaire_file.write(line + "\n")
             return True
     except Exception as e:
         print(f"An error occured while editing file: {e}")

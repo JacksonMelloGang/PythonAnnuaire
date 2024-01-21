@@ -1,6 +1,8 @@
 import os
 import shutil
 
+from constants import USER_FOLDER, ERROR_TYPE
+from utils import convert_and_transmit_data
 
 
 def handle_remove_user_request(client_socket, data):

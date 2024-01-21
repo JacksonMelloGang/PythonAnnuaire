@@ -1,8 +1,8 @@
 import os
 
-from ....server import USER_FOLDER
-from ....server import convert_and_transmit_data
-from ....server import ERROR_TYPE
+from constants import USER_FOLDER, ERROR_TYPE, USER_INFO_TYPE
+from utils import is_admin, convert_and_transmit_data
+
 
 def handle_user_info_request(client_socket, data):
     # check if user is admin

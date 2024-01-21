@@ -1,5 +1,8 @@
 import os
 
+from constants import USER_FOLDER, ERROR_TYPE, RESPONSE_OK_TYPE
+from utils import convert_and_transmit_data
+
 
 def handle_search_contact_request(client_socket, data):
     username = data["data"]["username"]
