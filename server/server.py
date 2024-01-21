@@ -12,7 +12,8 @@ from handler.user.contact.add_contact import handle_add_contact_request
 from handler.user.contact.edit_contact import handle_edit_contact_request
 from handler.user.contact.remove_contact import handle_remove_contact_request
 from handler.user.contact.search_contact import handle_search_contact_request
-from utils import read_files, is_admin, convert_and_transmit_data, receive_and_convert_data
+from handler.user.directory.look_directory import handle_look_directory_request
+from utils import is_admin, convert_and_transmit_data, receive_and_convert_data
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
@@ -54,25 +55,6 @@ RESPONSE_OK_TYPE = "RESPONSE_OK" # Provided => {"data": {"annuaire": "directory_
 ERROR_TYPE = "ERROR" # Provided => {"message": "Error Message"}
 
 
-def handle_look_directory_request(client_socket, data):
-    annuaire_file_name = data["data"]["annuaire_content"]
- 
-    # Access folder of asked user and check if {user}_annuaire.txt exists, if yes, read it and send it back
-    user_folder_name = annuaire_file_name.split("_")[0]
-
-    annuaire_content = read_files(f"{USER_FOLDER}/{user_folder_name}/{annuaire_file_name}.txt")
-
-    if annuaire_content is  False:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{user_folder_name}_annuaire.txt Not Found in {USER_FOLDER}/{user_folder_name}"})
-        return
-    
-    # If the file is empty, set annuaire_content to []
-    if len(annuaire_content) == 0:
-        annuaire_content = []
-
-    convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"annuaire": annuaire_file_name, "contacts": annuaire_content})
-
-
 def handle_list_directories_request(client_socket, data):
     pass
 
@@ -84,8 +66,6 @@ def handle_list_user_to_directory_request(client_socket, data):
     if not os.path.exists(f"{USER_FOLDER}/{username}"):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
         return
-    
-
 
     
     pass
@@ -163,7 +143,7 @@ def handle_client(client_socket):
                 case "DISCONNECT":
                     handle_disconnect(client_socket)
 
-                case "LOOK_DIRECTORY":
+                case "LOOK_DIRECTORY": # list contact of his own directory
                     handle_look_directory_request(client_socket, json_data)
                 case "ADD_CONTACT":
                     handle_add_contact_request(client_socket, json_data)
@@ -174,7 +154,7 @@ def handle_client(client_socket):
                 case "SEARCH_CONTACT":
                     handle_search_contact_request(client_socket, json_data)
 
-                case "LIST_DIRECTORIES":
+                case "LIST_DIRECTORIES": # list directory accesible by the user
                     handle_list_directories_request(client_socket, json_data)
                 case "LIST_USER_TO_DIRECTORY":
                     handle_list_user_to_directory_request(client_socket, json_data)
