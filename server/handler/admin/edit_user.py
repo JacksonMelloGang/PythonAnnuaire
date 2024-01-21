@@ -13,12 +13,12 @@ def handle_edit_user_request(client_socket, data):
     new_user_admin = data['data']['new_is_admin']
 
     if(not is_admin(username)):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 243 - Vous n'êtes pas autorisé à effectuer cette action"})
         return
 
     # check if username exists in user_files folder
     if not os.path.exists(f"{USER_FOLDER}/{user_to_edit}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 215 - l'Utilisateur n'existe pas"})
         return
 
     try:

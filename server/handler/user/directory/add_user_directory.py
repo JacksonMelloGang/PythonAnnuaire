@@ -11,10 +11,10 @@ def handle_add_user_to_directory_request(client_socket, data):
 
     # check if username and target_username exists in user_files folder
     if not os.path.exists(f"{USER_FOLDER}/{username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 215 - l'Utilisateur n'existe pas"})
         return
     if not os.path.exists(f"{USER_FOLDER}/{target_username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Target Doesn't Exists"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 215 - l'Utilisateur n'existe pas"})
         return
 
     # check if file shared_by_user.txt exists in user_folder, if not exists, throw error
@@ -33,7 +33,7 @@ def handle_add_user_to_directory_request(client_socket, data):
         f.close()
 
     if username in directories:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Target is already in shared_to_me.txt"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 242 - l'Utilisateur est déjà autorisé"})
         return
 
     # check if targetis not already in share_to_user.txt
@@ -43,7 +43,7 @@ def handle_add_user_to_directory_request(client_socket, data):
         f.close()
 
     if target_username in directories:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Target is already in shared_to_me.txt"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 242 - l'Utilisateur est déjà autorisé"})
         return
 
     try:
@@ -55,9 +55,9 @@ def handle_add_user_to_directory_request(client_socket, data):
             f.write(f"{target_username}\n")
             f.close()
 
-        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": f"User {target_username} Added to {username} Directory"})
+        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": f"Code 240 - Ajout de la permission de lecture à {target_username} sur l'annuaire {username}"})
 
     except Exception as e:
         print(f"An error occured: {e}")
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured, Please Try Again Later."})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Une erreur est survenue, veuillez réessayer plus tard"})
         return

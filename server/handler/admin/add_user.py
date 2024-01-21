@@ -1,6 +1,6 @@
 import os
 
-from constants import USER_FOLDER, ADD_USER_TYPE, ERROR_TYPE
+from constants import USER_FOLDER, RESPONSE_OK_TYPE, ERROR_TYPE
 from utils import convert_and_transmit_data
 
 
@@ -17,7 +17,7 @@ def handle_add_user_request(client_socket, data):
     # create new user folder
     success = create_new_user_folder(new_username, new_password, new_user_admin)
     if(success):
-        convert_and_transmit_data(client_socket, ADD_USER_TYPE, {"message": "Code 210 - Utilisateur Ajouté Avec Succès"})
+        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Code 210 - Utilisateur Ajouté Avec Succès"})
     else:
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Une Erreur Est Survenue Lors de la Création de l'Utilisateur"})
 
