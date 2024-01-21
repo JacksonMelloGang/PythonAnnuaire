@@ -43,7 +43,7 @@ def case_del_contact(client, annuaire_name):
     response = client.receive_and_convert_data()
 
     if (response["type"] == RESPONSE_OK_TYPE):
-        print("Contact Supprimé avec succès")
+        print("Code 222 - Contact Supprimé avec succès")
         time.sleep(1)
         clear()
     else:

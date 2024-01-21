@@ -21,7 +21,7 @@ def case_add_user_directory(client, annuaire_name):
     response = client.receive_and_convert_data()
 
     if (response["type"] == RESPONSE_OK_TYPE):
-        print("Utilisateur ajouté avec succès")
+        print("Code 210 - Utilisateur crée avec succès")
         time.sleep(1)
         clear()
     else:
