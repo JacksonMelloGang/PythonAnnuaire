@@ -28,6 +28,7 @@ SEARCH_CONTACT_TYPE = "SEARCH_CONTACT" # Provided => {"token": token, "data": {"
 
 # Share Directory
 LIST_DIRECTORIES_TYPE = "LIST_DIRECTORIES" # Provided => {"token": token, "data": {}}
+LIST_USER_TO_DIRECTORY_TYPE = "LIST_USER_TO_DIRECTORY"
 ADD_USER_TO_DIRECTORY_TYPE = "ADD_USER_TO_DIRECTORY" # Provided => {"token": token, "data": {"annuaire": "directory_name", "username": "username"}}
 REMOVE_USER_TO_DIRECTORY_TYPE = "REMOVE_USER_TO_DIRECTORY" # Provided => {"token": token, "data": {"annuaire": "directory_name", "username": "username"}}
 
@@ -362,8 +363,6 @@ def handle_remove_contact_request(client_socket, data):
 
     convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Successfully Edited"})
     
-
-
 def handle_search_contact_request(client_socket, data):
     username = data["data"]["username"]
     annuaire_file_name = data["data"]["annuaire_name"]
@@ -397,14 +396,51 @@ def handle_search_contact_request(client_socket, data):
         print(f"An error occured while searching contact: {e}")
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Searching Contact"})
 
+
+
+
 def handle_list_directories_request(client_socket, data):
     pass
 
 def handle_list_user_to_directory_request(client_socket, data):
+    # check if it's his directory
+    username = data["data"]["username"]
+
+    # check if user_folder exists in user_files folder
+    if not os.path.exists(f"{USER_FOLDER}/{username}"):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
+        return
+    
+
+
+    
     pass
 
 def handle_add_user_to_directory_request(client_socket, data):
     pass
+
+def handle_remove_user_from_directory_request(client_socket, data):
+    # check if user is admin
+    if not is_admin(data["data"]["username"]):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
+        return
+    
+    # check if user_files folder exists
+    if not os.path.exists(USER_FOLDER):
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "No User Found"})
+        return
+    
+    # get name of every folder in ./user_files
+    user_folders = os.listdir(USER_FOLDER)
+    user_to_delete = data["data"]["user_to_delete"]
+
+    # check if username exists in user_files folder
+    if user_to_delete not in user_folders:
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"Username {user_to_delete} Doesn't Exists"})
+        return
+    
+    pass
+
 
 def handle_add_user_request(client_socket, data):
     new_username = data["data"]["new_username"]
@@ -488,33 +524,6 @@ def handle_edit_user_request(client_socket, data):
         convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Removing User"})
         
 
-def handle_remove_user_from_directory_request(client_socket, data):
-    # check if user is admin
-    if not is_admin(data["data"]["username"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
-        return
-    
-    # check if user_files folder exists
-    if not os.path.exists(USER_FOLDER):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "No User Found"})
-        return
-    
-    # get name of every folder in ./user_files
-    user_folders = os.listdir(USER_FOLDER)
-    user_to_delete = data["data"]["user_to_delete"]
-
-    # check if username exists in user_files folder
-    if user_to_delete not in user_folders:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"Username {user_to_delete} Doesn't Exists"})
-        return
-    
-    # remove user folder
-    try:
-        os.remove(f"{USER_FOLDER}/{user_to_delete}")
-        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "User Removed Successfully"})
-    except Exception as e:
-        print(f"An error occured while removing user folder: {e}")
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Removing User"})
 
 def handle_client(client_socket):
     json_data = None

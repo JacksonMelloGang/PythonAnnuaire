@@ -16,7 +16,7 @@ SEARCH_CONTACT_TYPE = "SEARCH_CONTACT"
 
 # Share Directory
 LIST_DIRECTORIES_TYPE = "LIST_DIRECTORIES" 
-LIST_USERS_DIRECTORY_TYPE = "LIST_USERS_DIRECTORY"
+LIST_USER_TO_DIRECTORY_TYPE = "LIST_USER_TO_DIRECTORY"
 ADD_USER_TO_DIRECTORY_TYPE = "ADD_USER_TO_DIRECTORY" 
 REMOVE_USER_TO_DIRECTORY_TYPE = "REMOVE_USER_TO_DIRECTORY"
 
@@ -583,14 +583,31 @@ def main():
                     match(int(user_input)):
                         case 1:
                             # List permissions
-                            client.convert_and_transmit_data(LIST_USERS_DIRECTORY_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name})
+                            client.convert_and_transmit_data(LIST_USER_TO_DIRECTORY_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name})
                             response = client.receive_and_convert_data()
 
-                            
-
-                            pass
+                            if(response["type"] == RESPONSE_OK_TYPE):
+                                print("Voici les utilisateurs ayant accès à votre annuaire:")
+                                for user in response["data"]["users"]:
+                                    print(f"Nom d'utilisateur: {user['username']} | Admin: {user['isAdmin']}")
+                            else:
+                                print("Une erreur est survenue lors de la demande des permissions")
+                                print(response["data"]["message"])
+                                time.sleep(3)
+                                clear()
                         case 2:
                             # Add User from Directory
+                            user_to_add = input("Nom d'utilisateur: ").strip()
+
+                            if(len(user_to_add) == 0):
+                                print("Nom d'utilisateur invalide")
+                                time.sleep(2)
+                                clear()
+                                return
+                            
+                            # send request to server
+                            client.convert_and_transmit_data(ADD_USER_TO_DIRECTORY_TYPE, {"token": client.get_token(), "username": client.get_username(), "annuaire_name": annuaire_name, "user_to_add": user_to_add})
+
                             pass
                         case 3:
                             # Remove User from Directory
