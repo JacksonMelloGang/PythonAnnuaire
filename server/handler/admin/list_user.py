@@ -19,11 +19,11 @@ def handle_user_list_request(client_socket, data):
     
     # check if user_files folder exists
     if not os.path.exists(USER_FOLDER):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "No User Found"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "User Folder Not Found"})
         return
     
     # get name of every folder in ./user_files
     user_folders = os.listdir(USER_FOLDER)
 
     # send request with user list
-    convert_and_transmit_data(client_socket, LIST_USERS_TYPE, {"user_list": user_folders})
+    convert_and_transmit_data(client_socket, LIST_USERS_TYPE, {"message": "Code 213 - Listage des utilisateur réussis", "user_list": user_folders})

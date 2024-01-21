@@ -11,15 +11,15 @@ def handle_add_user_request(client_socket, data):
 
     # check if username already exists in user_files folder
     if os.path.exists(f"{USER_FOLDER}/{new_username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Already Exists"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 214 - l'Utilisateur Existe Déjà"})
         return
 
     # create new user folder
     success = create_new_user_folder(new_username, new_password, new_user_admin)
     if(success):
-        convert_and_transmit_data(client_socket, ADD_USER_TYPE, {"message": "User Created Successfully"})
+        convert_and_transmit_data(client_socket, ADD_USER_TYPE, {"message": "Code 210 - Utilisateur Ajouté Avec Succès"})
     else:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Creating User"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Une Erreur Est Survenue Lors de la Création de l'Utilisateur"})
 
 
 def create_new_user_folder(username, password, is_user_admin = False):
