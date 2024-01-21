@@ -11,10 +11,10 @@ def handle_list_directories_request(client_socket, data):
 
     # check if user_folder exists in user_files folder
     if not os.path.exists(f"{USER_FOLDER}/{username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 215 - l'Utilisateur n'existe pas"})
         return
 
-    # check if file shared_by_user.txt exists in user_folder, if not exists, throw error
+    # check if file shared_to_me.txt exists in user_folder, if not exists, throw error
     if not os.path.exists(f"{user_folder}/shared_to_me.txt"):
         convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "shared_to_me.txt not Found"})
         return

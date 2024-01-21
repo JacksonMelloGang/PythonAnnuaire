@@ -20,7 +20,7 @@ def handle_remove_user_from_directory_request(client_socket, data):
 
     # check if username exists in user_files folder
     if target not in user_folders:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"Username {target} Doesn't Exists"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"Erreur 215 - l'Utilisateur {target} n'existe pas"})
         return
 
     target_folder = f"{USER_FOLDER}/{target}"

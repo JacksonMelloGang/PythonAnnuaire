@@ -113,9 +113,9 @@ def handle_client(client_socket):
                 case "SEARCH_CONTACT":
                     handle_search_contact_request(client_socket, json_data)
 
-                case "LIST_DIRECTORIES": # list directory accesible by the user
+                case "LIST_DIRECTORIES":
                     handle_list_directories_request(client_socket, json_data)
-                case "LIST_USER_TO_DIRECTORY":
+                case "LIST_USER_TO_DIRECTORY": # list directory accesible to users
                     handle_list_user_to_directory_request(client_socket, json_data)
                 case "ADD_USER_TO_DIRECTORY":
                     handle_add_user_to_directory_request(client_socket, json_data)

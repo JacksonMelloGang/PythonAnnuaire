@@ -7,12 +7,12 @@ from utils import is_admin, convert_and_transmit_data
 def handle_user_info_request(client_socket, data):
     # check if user is admin
     if not is_admin(data["data"]["username"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 243 - Vous n'êtes pas autorisé à effectuer cette action"})
         return
     
     # check if user_files folder exists
     if not os.path.exists(USER_FOLDER):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "No User Found"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "User Folder not Found Found"})
         return
     
     # get name of every folder in ./user_files
@@ -20,7 +20,7 @@ def handle_user_info_request(client_socket, data):
 
     # check if username exists in user_files folder
     if data["data"]["looked_user"] not in user_folders:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 215 - l'Utilisateur n'existe pas"})
         return
     
     # send request with user info

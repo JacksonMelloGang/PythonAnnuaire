@@ -16,7 +16,7 @@ def handle_edit_contact_request(client_socket, data):
 
     # check if user_folder exists in user_files folder
     if not os.path.exists(f"{USER_FOLDER}/{username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 215 - l'Utilisateur n'existe pas"})
         return
 
     # check if {user}_annuaire.txt exists in user_folder
