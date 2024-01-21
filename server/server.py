@@ -14,7 +14,6 @@ from handler.user.contact.edit_contact import handle_edit_contact_request
 from handler.user.contact.remove_contact import handle_remove_contact_request
 from handler.user.contact.search_contact import handle_search_contact_request
 from handler.user.directory.add_user_directory import handle_add_user_to_directory_request
-from handler.user.directory.list_directories import handle_list_directories_request
 from handler.user.directory.list_user_to_directory import handle_list_user_to_directory_request
 from handler.user.directory.look_into_directory import handle_look_directory_request
 from handler.user.directory.rm_user_directory import handle_remove_user_from_directory_request
@@ -113,8 +112,6 @@ def handle_client(client_socket):
                 case "SEARCH_CONTACT":
                     handle_search_contact_request(client_socket, json_data)
 
-                case "LIST_DIRECTORIES":
-                    handle_list_directories_request(client_socket, json_data)
                 case "LIST_USER_TO_DIRECTORY": # list directory accesible to users
                     handle_list_user_to_directory_request(client_socket, json_data)
                 case "ADD_USER_TO_DIRECTORY":

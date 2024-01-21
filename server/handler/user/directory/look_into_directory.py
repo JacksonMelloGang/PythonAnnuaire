@@ -12,7 +12,7 @@ def handle_look_directory_request(client_socket, data):
 
     # check if user has same folder's name as the annuaire_file_name or if when reading shared_to_me user file, we don't find the name of the annuaire_content, throw error
     if(annuaire_file_name.split("_")[0] != username) and (annuaire_file_name.split("_")[0] not in shared_to_me_content):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"You do not have permission to access {annuaire_file_name.split('_')[0]} directory !"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"Erreur 243 - Vous n'avez pas la permission d'accéder à l'annuaire de {annuaire_file_name.split('_')[0]} !"})
         return
 
     # Access folder of asked user and check if {user}_annuaire.txt exists, if yes, read it and send it back
@@ -23,7 +23,7 @@ def handle_look_directory_request(client_socket, data):
     annuaire_content = read_files(annuaire_path)
 
     if annuaire_content is False:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"File {user_folder_name} Not Found in {USER_FOLDER}/{user_folder_name}"})
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"Fichier {user_folder_name} Non trouvé dans {USER_FOLDER}/{user_folder_name}"})
         return
 
     # If the file is empty, set annuaire_content to []
