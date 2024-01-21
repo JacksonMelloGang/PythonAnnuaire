@@ -1,10 +1,18 @@
 import socket
 import threading
 import os
-import shutil
 
-import json
-import secrets
+from handler.admin.add_user import handle_add_user_request
+from handler.admin.del_user import handle_remove_user_request
+from handler.admin.edit_user import handle_edit_user_request
+from handler.admin.list_user import handle_user_list_request
+from handler.disconnect import handle_disconnect
+from handler.login import verify_token, handle_login
+from handler.user.contact.add_contact import handle_add_contact_request
+from handler.user.contact.edit_contact import handle_edit_contact_request
+from handler.user.contact.remove_contact import handle_remove_contact_request
+from handler.user.contact.search_contact import handle_search_contact_request
+from utils import read_files, is_admin, convert_and_transmit_data, receive_and_convert_data
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
@@ -46,216 +54,6 @@ RESPONSE_OK_TYPE = "RESPONSE_OK" # Provided => {"data": {"annuaire": "directory_
 ERROR_TYPE = "ERROR" # Provided => {"message": "Error Message"}
 
 
-def convert_and_transmit_data(client_socket, request_type, data):
-    try:
-        request = {"type": request_type, "data": data}            
-        client_socket.send(json.dumps(request).encode('utf-8'))
-        print(f"Sending Request: {request_type} to {client_socket.getpeername()}")
-    except Exception as e:
-        print("An Unknow Error Has Occured while sending request")
-        print(e)
-
-
-def receive_and_convert_data(client_socket):
-    json_content = False
-
-    content = client_socket.recv(1024).decode('utf-8')
-    try:
-        json_content = json.loads(content)
-    except(Exception):
-        print(f"Couldn't convert received data:\n{content}")
-    return json_content
-
-def create_new_user_folder(username, password, is_user_admin = False):
-    try:
-        # create folder for user, and if user_info.txt doesn't exist, create it and write password in it
-        os.makedirs(f"{USER_FOLDER}/{username}", exist_ok=True)
-        with open(f"{USER_FOLDER}/{username}/user_info.txt", "w") as user_info_file:
-            user_info_file.write(password)
-            user_info_file.write("\n")
-            user_info_file.write(f"isAdmin={is_user_admin}")
-            user_info_file.close()
-        # create username_annuaire.txt in user folder
-        with open(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", "w") as user_annuaire_file:
-            user_annuaire_file.write("")
-            user_annuaire_file.close()
-            return True
-    except Exception as e:
-        print(f"An error occured while creating new user folder: {e}")
-        return False
-        
-
-def handle_login(client_socket, data):
-    # check if username and password are in data
-    if "username" not in data or "password" not in data:
-        request = convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Credentials"})
-        client_socket.send(json.dumps(request).encode('utf-8'))
-        return
-
-    # Logique de gestion de la connexion
-    username = data["username"]
-    password = data["password"]
-
-    result, token, is_admin = authenticate_user(username, password)
-
-    # Vérification des identifiants - À adapter en fonction de votre logique d'authentification
-    if result == True:
-        convert_and_transmit_data(client_socket, CONNEXION_OK_TYPE, {"message": "Valid Credentials", "token": token, "isAdmin": is_admin})
-    else:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Invalid Credentials"})
-        
-
-def authenticate_user(username, password):
-    # create./user_files folder if it doesn't exist where is the program is executed    
-    if not os.path.exists(USER_FOLDER):
-        os.makedirs(USER_FOLDER)
-        return False, None, False
-
-    # get name of every folder in ./user_files
-    user_folders = os.listdir(USER_FOLDER)
-
-    # check if username is in user_folders, check if file user_info.txt exists in it and if yes, access file user_info.txt to get password at first line
-    if username in user_folders and os.path.exists(f"{USER_FOLDER}/{username}/user_info.txt"):
-        with open(f"{USER_FOLDER}/{username}/user_info.txt", "r") as user_info_file:
-            # get first line of user_info.txt and compare it with password
-            file_password = user_info_file.readline().strip()
-
-            if file_password == password:
-                token = secrets.token_hex(16)
-                valid_token[username] = token # store token in valid_token dict
-                is_admin = False
-
-                # check if user is admin by checking the next line and look if there is "isAdmin=True"
-                next_line = user_info_file.readline().strip()
-                if next_line == "isAdmin=True":
-                    is_admin = True
-
-                return True, token, is_admin
-            else:
-                return False, None, False
-    else:
-        return False, None, None
-    
-def verify_token(username, token):
-    if username in valid_token and valid_token[username] == token:
-        return True
-    else:
-        return False
-
-def is_admin(username):
-    is_admin = False
-    # check with username if he has admin rights in user_info.txt
-    if os.path.exists(f"{USER_FOLDER}/{username}/user_info.txt"):
-        with open(f"{USER_FOLDER}/{username}/user_info.txt", "r") as user_info_file:
-            # while we don't reach the end of the file, we read the next line to check if it's "isAdmin=True"
-            lines = user_info_file.readlines()
-            for line in lines:
-                if line.strip() == "isAdmin=True":
-                    is_admin = True
-                    break
-            user_info_file.close()
-    return is_admin
-
-def handle_disconnect(client_socket):
-    # close the connection & invalidate token
-    client_socket.close()
-    print(f"Connexion fermée avec {client_socket.getpeername()}")    
- 
-
-def handle_user_list_request(client_socket, data):
-    verify_token_result = verify_token(data["data"]["username"], data["data"]["token"])
-
-    if(not verify_token_result):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username/Token Mismatch, Please Login Again."})
-        return
-
-    # check if user is admin
-    if not is_admin(data["data"]["username"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
-        return
-    
-    # check if user_files folder exists
-    if not os.path.exists(USER_FOLDER):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "No User Found"})
-        return
-    
-    # get name of every folder in ./user_files
-    user_folders = os.listdir(USER_FOLDER)
-
-    # send request with user list
-    convert_and_transmit_data(client_socket, LIST_USERS_TYPE, {"user_list": user_folders})
-
-def handle_user_info_request(client_socket, data):
-    # check if user is admin
-    if not is_admin(data["data"]["username"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
-        return
-    
-    # check if user_files folder exists
-    if not os.path.exists(USER_FOLDER):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "No User Found"})
-        return
-    
-    # get name of every folder in ./user_files
-    user_folders = os.listdir(USER_FOLDER)
-
-    # check if username exists in user_files folder
-    if data["data"]["looked_user"] not in user_folders:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
-        return
-    
-    # send request with user info
-    with open(f"{USER_FOLDER}/{data['data']['looked_user']}/user_info.txt", "r") as user_info_file:
-        # while we don't reach the end of the file, we read the next line to check if it's "isAdmin=True"
-        while True:
-            next_line = user_info_file.readline()
-            if not next_line:
-                break
-            if next_line == "isAdmin=True":
-                convert_and_transmit_data(client_socket, USER_INFO_TYPE, {"user_info": {"username": data["data"]["looked_user"], "isAdmin": True}})
-                return
-        convert_and_transmit_data(client_socket, USER_INFO_TYPE, {"user_info": {"username": data["data"]["looked_user"], "isAdmin": False}})
-        user_info_file.close()
-
-def read_files(path):
-    lines = []
-
-    if os.path.exists(f"{path}"):
-            with open(f"{path}", "r") as annuaire_file:
-                # separate each line of the file in an array []
-                lines = annuaire_file.readlines()
-                for i in range(len(lines)):
-                    # remove \n at the end of each line
-                    lines[i] = lines[i].replace("\n", "")
-                annuaire_file.close()
-    else:
-        print(f"File {path} doesn't exists")
-        lines = False
-
-    return lines
-
-def edit_file(path, line, content):
-    try:
-        lines = read_files(path)
-        lines[line] = content
-        with open(f"{path}", "w") as annuaire_file:
-            annuaire_file.writelines(lines)
-            annuaire_file.close()
-            return True
-    except Exception as e:
-        print(f"An error occured while editing file: {e}")
-        return False
-
-def remove_line(filename, index):
-    with open(filename, 'r') as file:
-        lines = file.readlines()
-
-    if index < len(lines):
-        del lines[index]
-
-    with open(filename, 'w') as file:
-        file.writelines(lines)
-
 def handle_look_directory_request(client_socket, data):
     annuaire_file_name = data["data"]["annuaire_content"]
  
@@ -273,130 +71,6 @@ def handle_look_directory_request(client_socket, data):
         annuaire_content = []
 
     convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"annuaire": annuaire_file_name, "contacts": annuaire_content})
-        
-    
- 
-def handle_add_contact_request(client_socket, data):
-    username = data["data"]["username"]
-
-    if("contact" not in data["data"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Info"})
-        return
-    
-    if("name" not in data["data"]["contact"] or "first_name" not in data["data"]["contact"] or "email" not in data["data"]["contact"] or "phone" not in data["data"]["contact"] or "address" not in data["data"]["contact"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Info"})
-        return
-
-    # check if user_folder exists in user_files folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
-        return
-    
-    # check if {user}_annuaire.txt exists in user_folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}/{username}_annuaire.txt"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{username}_annuaire.txt Not Found in {USER_FOLDER}/{username}"})
-        return
-    
-    try: 
-        # open {user}_annuaire.txt and append contact to it
-        with open(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", "a") as annuaire_file:
-            contact = data["data"]["contact"]
-            annuaire_file.write(f"{contact['name']},{contact['first_name']},{contact['email']},{contact['phone']},{contact['address']}\n")
-            annuaire_file.close()
-
-            convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Added Successfully"})
-    except Exception as e:
-        print(f"An error occured while adding contact: {e}")
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Adding Contact"})    
-
-def handle_edit_contact_request(client_socket, data):
-    if("contact_index" not in data["data"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Line Number or New Contact Info"})
-        return
-
-    # check if user has access to directory, if yes, edit contact in directory (edit entry in {user}_annuaire.txt)
-    username = data["data"]["username"]
-    contact_index = data["data"]["contact_index"]
-    new_contact_info = data["data"]["new_contact_info"]
-
-    # check if user_folder exists in user_files folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
-        return
-    
-    # check if {user}_annuaire.txt exists in user_folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}/{username}_annuaire.txt"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{username}_annuaire.txt Not Found in {USER_FOLDER}/{username}"})
-        return
-    
-    # prepare new contact info to be written in {user}_annuaire.txt
-    new_contact_info = f"{new_contact_info['name']},{new_contact_info['first_name']},{new_contact_info['email']},{new_contact_info['phone']},{new_contact_info['address']}\n"
-    
-    result = edit_file(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", contact_index, new_contact_info)
-
-    if(result):
-        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Edited Successfully"})
-    else:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Editing Contact"})
-
-
-def handle_remove_contact_request(client_socket, data):
-    if("contact_index" not in data["data"]):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Missing Contact Line Number or New Contact Info"})
-        return
-
-    # check if user has access to directory, if yes, edit contact in directory (edit entry in {user}_annuaire.txt)
-    username = data["data"]["username"]
-    contact_index = data["data"]["contact_index"]
-
-    # check if user_folder exists in user_files folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
-        return
-    
-    # check if {user}_annuaire.txt exists in user_folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}/{username}_annuaire.txt"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{username}_annuaire.txt Not Found in {USER_FOLDER}/{username}"})
-        return
-    
-    remove_line(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", contact_index)
-
-    convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Successfully Edited"})
-    
-def handle_search_contact_request(client_socket, data):
-    username = data["data"]["username"]
-    annuaire_file_name = data["data"]["annuaire_name"]
-    word_to_search = data["data"]["word_to_search"]
-    found_lines = []
-
-    # check if user_folder exists in user_files folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
-        return
-    
-    # check if {user}_annuaire.txt exists in user_folder
-    if not os.path.exists(f"{USER_FOLDER}/{username}/{username}_annuaire.txt"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": f"{username}_annuaire.txt Not Found in {USER_FOLDER}/{username}"})
-        return
-    
-    # open file {user}_annuaire.txt and search for contact
-    try:
-        with open(f"{USER_FOLDER}/{username}/{annuaire_file_name}.txt", 'r') as annuaire_file:
-            for ligne in annuaire_file:
-                word_to_search = word_to_search.lower()
-                ligne = ligne.lower()
-                if word_to_search in ligne:
-                    found_lines.append(ligne)
-            
-            if(len(found_lines) == 0):
-                convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "No Contact Found"})
-            else:
-                convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Contact Found", "contacts": found_lines})
-    except Exception as e:
-        print(f"An error occured while searching contact: {e}")
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Searching Contact"})
-
-
 
 
 def handle_list_directories_request(client_socket, data):
@@ -442,89 +116,6 @@ def handle_remove_user_from_directory_request(client_socket, data):
     pass
 
 
-def handle_add_user_request(client_socket, data):
-    new_username = data["data"]["new_username"]
-    new_password = data["data"]["new_password"]
-    new_user_admin = data["data"]["new_user_admin"]
-
-    # check if username already exists in user_files folder
-    if os.path.exists(f"{USER_FOLDER}/{new_username}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Already Exists"})
-        return
-    
-    # create new user folder
-    success = create_new_user_folder(new_username, new_password, new_user_admin)
-    if(success):
-        convert_and_transmit_data(client_socket, ADD_USER_TYPE, {"message": "User Created Successfully"})
-    else:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Creating User"})
-
-def handle_remove_user_request(client_socket, data):
-    user_to_delete = data['data']['user_to_delete']
-    username = data['data']['username']
-
-    # check if username exists in user_files folder
-    if not os.path.exists(f"{USER_FOLDER}/{user_to_delete}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
-        return
-    
-    if(user_to_delete == username):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You can't delete yourself"})
-        return
-
-    # remove user folder
-    try:
-        shutil.rmtree(f"{USER_FOLDER}/{user_to_delete}")
-        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "User Removed Successfully"})
-    except Exception as e:
-        print(f"An error occured while removing user folder: {e}")
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Removing User"})
-
-def handle_edit_user_request(client_socket, data):
-    username = data['data']['username']
-    user_to_edit = data['data']['user_to_edit']
-
-    new_username = data['data']['new_username']
-    new_password = data['data']['new_password']
-    new_user_admin = data['data']['new_is_admin']
-
-    if(not is_admin(username)):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "You don't have admin rights"})
-        return
-
-    # check if username exists in user_files folder
-    if not os.path.exists(f"{USER_FOLDER}/{user_to_edit}"):
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Username Doesn't Exists"})
-        return
-    
-    try:
-        # rename folder with new username
-        os.rename(f"{USER_FOLDER}/{user_to_edit}", f"{USER_FOLDER}/{new_username}")
-        # rename annuaire_file.txt
-        os.rename(f"{USER_FOLDER}/{new_username}/{user_to_edit}_annuaire.txt", f"{USER_FOLDER}/{new_username}/{new_username}_annuaire.txt")
-
-        # edit user_info.txt and change first line with new password
-        try:
-            with open(f"{USER_FOLDER}/{new_username}/user_info.txt", "r") as user_info_file:
-                lines = user_info_file.readlines()
-                lines[0] = new_password
-                lines[1] = f"isAdmin={new_user_admin}"
-                user_info_file.close()
-
-                edit_file(f"{USER_FOLDER}/{new_username}/user_info.txt", 0, lines[0])
-                edit_file(f"{USER_FOLDER}/{new_username}/user_info.txt", 1, lines[1])
-        except Exception as e:
-            print(f"An error occured while editing user_info.txt: {e}")
-            convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Editing User"})
-            return
-
-        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "User Edited Successfully"})
-    except Exception as e:
-        print(f"An error occured while editing user folder: {e}")
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "An Error Occured While Removing User"})
-        
-
-
 def handle_client(client_socket):
     json_data = None
     request_type = None
@@ -568,7 +159,7 @@ def handle_client(client_socket):
 
             # match is equivalent of switch case in python
             print(f"Received Request Type: {request_type} from {client_socket.getpeername()}")
-            match(request_type):
+            match request_type:
                 case "DISCONNECT":
                     handle_disconnect(client_socket)
 
@@ -603,8 +194,7 @@ def handle_client(client_socket):
                             
                 case _: # default case
                     print(f"Invalid Request from {client_socket.getpeername()}")
-                    request = convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Invalid Request"})
-                    client_socket.send(request)
+                    convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Invalid Request"})
 
 
 def start_server():
