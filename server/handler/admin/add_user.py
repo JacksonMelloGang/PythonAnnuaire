@@ -47,9 +47,8 @@ def create_new_user_folder(username, password, is_user_admin = False):
         return True
     except OSError as err:
         print("Couldn't create user because it already exists !")
-        return False
+        return "Couldn't create user because it already exists !"
     except Exception as e:
         print(f"An error occured while creating new user folder: {e}")
-        return False
-
+        return f"An error occured while creating new user folder: {e}"
 

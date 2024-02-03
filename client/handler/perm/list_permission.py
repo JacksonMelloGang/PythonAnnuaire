@@ -11,6 +11,7 @@ def case_list_permission(client, annuaire_name):
                                       "annuaire_name": annuaire_name})
     response = client.receive_and_convert_data()
     if (response["type"] == RESPONSE_OK_TYPE):
+        print(response)
         if ("directories" not in response["data"]):
             print("Vous n'avez partagé l'accès à votre annuaire avec personne.")
             time.sleep(2)

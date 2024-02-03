@@ -5,7 +5,6 @@ import secrets
 from constants import ERROR_TYPE, CONNEXION_OK_TYPE, USER_FOLDER, valid_token
 from utils import convert_and_transmit_data
 
-
 def handle_login(client_socket, data):
     # check if username and password are in data
     if "username" not in data or "password" not in data:
