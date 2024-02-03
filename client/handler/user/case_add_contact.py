@@ -12,7 +12,7 @@ def case_add_contact(annuaire_name, client):
                                                         "annuaire_name": annuaire_name, "contact": contact})
     response = client.receive_and_convert_data()
     if (response["type"] == RESPONSE_OK_TYPE):
-        print("Contact Ajouté avec succès")
+        print("210 - Création avec succès")
         time.sleep(1)
         clear()
     else:

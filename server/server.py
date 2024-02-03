@@ -34,26 +34,7 @@ if not os.path.exists(USER_FOLDER):
         print(e)
         exit(1)
 
-def share_file_with_user(initiating_username, target_username):
-    # Path to the target user's shared_to_user.txt file
-    target_user_file = f"{USER_FOLDER}/{target_username}/shared_to_user.txt"
-
-    # Open the file in append mode and write the initiating user's name
-    with open(target_user_file, 'a') as f:
-        f.write(f"{initiating_username}\n")
-
-def get_shared_files(target_username):
-    # Path to the target user's shared_to_user.txt file
-    target_user_file = f"{USER_FOLDER}/{target_username}/shared_to_me.txt"
-
-    # Open the file in read mode and get all the lines
-    with open(target_user_file, 'r') as f:
-        shared_files = [line.strip() for line in f.readlines()]
-
-    return shared_files
-
 # list directory user has access to
-
 def handle_client(client_socket):
     json_data = None
     request_type = None
@@ -150,7 +131,7 @@ def start_server():
     try:
         while True:
             client_socket, _ = server_socket.accept()
-            
+
             client_handler = threading.Thread(target=handle_client, args=(client_socket,))
             client_handler.start()
     except KeyboardInterrupt:
