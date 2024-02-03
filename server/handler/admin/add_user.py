@@ -15,14 +15,7 @@ def handle_add_user_request(client_socket, data):
         return
 
     # create new user folder
-    success = create_new_user_folder(new_username, new_password, new_user_admin)
-    if(success):
-        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Code 210 - Utilisateur Ajouté Avec Succès"})
-    else:
-        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Une Erreur Est Survenue Lors de la Création de l'Utilisateur"})
-
-
-def create_new_user_folder(username, password, is_user_admin = False):
+    success = False
     try:
         # create folder for user, and if user_info.txt doesn't exist, create it and write password in it
         os.makedirs(f"{USER_FOLDER}/{username}", exist_ok=False)
@@ -44,11 +37,15 @@ def create_new_user_folder(username, password, is_user_admin = False):
             shared_by_me_file.write("")
             shared_by_me_file.close()
         
-        return True
+        success = True
     except OSError as err:
         print("Couldn't create user because it already exists !")
-        return "Couldn't create user because it already exists !"
+        success = False
     except Exception as e:
         print(f"An error occured while creating new user folder: {e}")
-        return f"An error occured while creating new user folder: {e}"
+        success = False
 
+    if(success):
+        convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Code 210 - Utilisateur Ajouté Avec Succès"})
+    else:
+        convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Une Erreur Est Survenue Lors de la Création de l'Utilisateur"})
