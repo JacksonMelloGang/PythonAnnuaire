@@ -17,3 +17,4 @@ def case_add_contact(annuaire_name, client):
         clear()
     else:
         print("Une erreur est survenue lors de l'ajout du contact")
+        print(response["data"]["message"])

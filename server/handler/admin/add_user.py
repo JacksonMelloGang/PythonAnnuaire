@@ -18,22 +18,22 @@ def handle_add_user_request(client_socket, data):
     success = False
     try:
         # create folder for user, and if user_info.txt doesn't exist, create it and write password in it
-        os.makedirs(f"{USER_FOLDER}/{username}", exist_ok=False)
-        with open(f"{USER_FOLDER}/{username}/user_info.txt", "w") as user_info_file:
+        os.makedirs(f"{USER_FOLDER}/{new_username}", exist_ok=False)
+        with open(f"{USER_FOLDER}/{new_username}/user_info.txt", "w") as user_info_file:
             user_info_file.write(password)
             user_info_file.write("\n")
             user_info_file.write(f"isAdmin={is_user_admin}")
             user_info_file.write("\n")
             user_info_file.close()
         # create username_annuaire.txt in user folder
-        with open(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", "w") as user_annuaire_file:
+        with open(f"{USER_FOLDER}/{new_username}/{new_username}_annuaire.txt", "w") as user_annuaire_file:
             user_annuaire_file.write("")
             user_annuaire_file.close()
         # create shared_to_me.txt and shared_by_me.txt in user folder
-        with open(f"{USER_FOLDER}/{username}/share_to_user.txt", "w") as shared_to_me_file:
+        with open(f"{USER_FOLDER}/{new_username}/share_to_user.txt", "w") as shared_to_me_file:
             shared_to_me_file.write("")
             shared_to_me_file.close()
-        with open(f"{USER_FOLDER}/{username}/shared_by_me.txt", "w") as shared_by_me_file:
+        with open(f"{USER_FOLDER}/{new_username}/shared_by_me.txt", "w") as shared_by_me_file:
             shared_by_me_file.write("")
             shared_by_me_file.close()
         
