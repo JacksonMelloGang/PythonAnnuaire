@@ -32,7 +32,10 @@ def handle_add_contact_request(client_socket, data):
     # check if contact_info is already in {user}_annuaire.txt by reading each line and comparing it to contact_info
     with open(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", "r") as annuaire_file:
         for line in annuaire_file:
-            if line == contact_info:
+            # split line into contact_info with ,
+            line = line.strip().split(",")
+            # get name and first_name from line and compare it to contact["name"] and contact["first_name"]
+            if(line[0] == contact["name"] and line[1] == contact["first_name"]):
                 convert_and_transmit_data(client_socket, ERROR_TYPE, {"message": "Erreur 221 - Contact Déjà Existant"})
                 return
         annuaire_file.close()
@@ -41,7 +44,7 @@ def handle_add_contact_request(client_socket, data):
     try:
         # open {user}_annuaire.txt and append contact to it in a new line
         with open(f"{USER_FOLDER}/{username}/{username}_annuaire.txt", "a") as annuaire_file:
-            annuaire_file.write(f"{contact_info}\n")
+            annuaire_file.write(f"{contact_info}")
             annuaire_file.close()
 
             convert_and_transmit_data(client_socket, RESPONSE_OK_TYPE, {"message": "Code 220 - Contact ajouté avec succès"})
